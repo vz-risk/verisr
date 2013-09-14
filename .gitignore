@@ -6,9 +6,9 @@ Icon
 *.RProj
 .Rhistory
 .RData
-suda.Rcheck
-rcode/ch4
 .RDataTmp
+README.html
+figure
 
 <<<<<<< HEAD
 .dropbox
@@ -46,4 +46,3 @@ $RECYCLE.BIN/
 
 *.ipynb
 
-chapters/ch05/ch05.zip

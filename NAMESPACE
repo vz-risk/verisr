@@ -1,4 +1,6 @@
+S3method(summary,verisr)
 export(count)
 export(getenum)
+export(getenumby)
 export(json2veris)
 import(rjson)

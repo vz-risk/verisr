@@ -9,8 +9,9 @@
 }
 \description{
   This function will iterate through all the JSON files
-  ("json$") in the given directory and parse it as a VERIS
-  object. This will return a verisr object.
+  (regex pattern of "json$") in the given directory and
+  parse it as a VERIS object. This will return a verisr
+  object.
 }
 \examples{
 \dontrun{

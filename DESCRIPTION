@@ -6,7 +6,7 @@ Date: 2013-09-13
 Author: Jay Jacobs <jay@beechplane.com>
 Maintainer: Jay Jacobs <jay@beechplane.com>
 Description: Loads up VERIS JSON objects and offers convenience functions
-License: Unknown Yet
+License: MIT
 Collate:
     'verisr.R'
 Imports:
