@@ -1,0 +1,13 @@
+Package: verisr
+Type: Package
+Title: Tools for working with VERIS objects
+Version: 0.1
+Date: 2013-09-13
+Author: Jay Jacobs <jay@beechplane.com>
+Maintainer: Jay Jacobs <jay@beechplane.com>
+Description: Loads up VERIS JSON objects and offers convenience functions
+License: Unknown Yet
+Collate:
+    'verisr.R'
+Imports:
+    rjson
