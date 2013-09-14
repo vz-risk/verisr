@@ -14,8 +14,8 @@
 }
 \examples{
 \dontrun{
-hacking <- count("action.hacking")
-external <- count("actor.external")
+hacking <- count(veris, "action.hacking")
+external <- count(veris, "actor.external")
 }
 }
 

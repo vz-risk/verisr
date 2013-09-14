@@ -1,3 +1,4 @@
 export(count)
+export(getenum)
 export(json2veris)
 import(rjson)

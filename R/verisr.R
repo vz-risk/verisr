@@ -51,7 +51,6 @@ count <- function(veris, field) {
 #' @param veris a verisr object
 #' @param enum the field to count
 #' @export
-#' @import data.table
 #' @examples
 #' \dontrun{
 #' hacking <- getenum(veris, "action.hacking.variety")
@@ -77,6 +76,7 @@ getenum <- function(veris, field) {
   enum.df$enum <- factor(enum.df$enum, levels=rev(enum.df$enum), ordered=T)
   enum.df
 }
+
 #dir <- "~/Documents/github/VCDB/incidents"
 #dir <- "~/Documents/json/newfinal/uscert"
 # dir <- c("~/Documents/github/VCDB/incidents", "~/Documents/json/newfinal/vzint")
