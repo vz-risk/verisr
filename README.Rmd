@@ -3,7 +3,14 @@ verisr
 
 This package is to support data analysis within the VERIS framework (http://veriscommunity.net).  It is intended to work directly with raw JSON and can be used against the VERIS Community Database (VCDB) found at (http://veriscommunity.net/doku.php?id=public) and (https://github.com/vz-risk/VCDB).
 
-First thing we want to do is load the package and point it at a directory of JSON files storing VERIS data.
+Install it from straight from github:
+
+```{r eval=FALSE}
+library("devtools")
+install_github("verisr", "vz-risk")
+```
+
+To begin, load the package and point it at a directory of JSON files storing VERIS data.
 
 ```{r}
 library(verisr)

@@ -3,7 +3,16 @@ verisr
 
 This package is to support data analysis within the VERIS framework (http://veriscommunity.net).  It is intended to work directly with raw JSON and can be used against the VERIS Community Database (VCDB) found at (http://veriscommunity.net/doku.php?id=public) and (https://github.com/vz-risk/VCDB).
 
-First thing we want to do is load the package and point it at a directory of JSON files storing VERIS data.
+Install it from straight from github:
+
+
+```r
+library("devtools")
+install_github("verisr", "vz-risk")
+```
+
+
+To begin, load the package and point it at a directory of JSON files storing VERIS data.
 
 
 ```r
@@ -66,7 +75,7 @@ gg <- gg + coord_flip() + theme_bw()
 print(gg)
 ```
 
-![plot of chunk unnamed-chunk-4](figure/unnamed-chunk-4.png) 
+![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5.png) 
 
 
 In progress: searching by two enumerations:
@@ -81,5 +90,5 @@ gg <- gg + coord_flip() + theme_bw()
 print(gg)
 ```
 
-![plot of chunk unnamed-chunk-5](figure/unnamed-chunk-5.png) 
+![plot of chunk unnamed-chunk-6](figure/unnamed-chunk-6.png) 
 
