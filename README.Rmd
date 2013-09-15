@@ -43,8 +43,15 @@ print(gg)
 
 In progress: searching by two enumerations:
 
-```{r fig.height=10}
+```{r}
 hacking.actor <- getenumby(vcdb, "action.hacking.vector", "actor.external.variety")
+head(hacking.actor)
+```
+
+Now we can create all sorts of views of this data.
+For example a faceted bar plot comparing the two:
+
+```{r fig.height=10}
 gg <- ggplot(hacking.actor, aes(x=enum, y=x))
 gg <- gg + geom_bar(stat="identity", fill="steelblue")
 gg <- gg + facet_wrap( ~ primary, ncol=2)
@@ -53,3 +60,15 @@ gg <- gg + ggtitle("External Actors by Hacking Vector")
 gg <- gg + coord_flip() + theme_bw()
 print(gg)
 ```
+
+Or perhaps a heat map with the count in the box:
+```{r}
+gg <- ggplot(hacking.actor, aes(x=enum, y=primary, fill=x, label=x))
+gg <- gg + geom_tile() + geom_text()
+gg <- gg + scale_fill_gradient(low = "#D8EEFE", high = "#4682B4")
+gg <- gg + ylab("External Variety") + xlab("Hacking Vector") 
+gg <- gg + ggtitle("External Actors by Hacking Vector")
+gg <- gg + theme_bw()
+gg <- gg + theme(axis.text.x = element_text(angle = 90, hjust = 1),
+                 legend.position="none")
+print(gg)

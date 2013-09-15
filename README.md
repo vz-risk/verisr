@@ -83,6 +83,25 @@ In progress: searching by two enumerations:
 
 ```r
 hacking.actor <- getenumby(vcdb, "action.hacking.vector", "actor.external.variety")
+head(hacking.actor)
+```
+
+```
+##              enum   x      primary
+## 1  Backdoor or C2   2     Activist
+## 2           Other   1     Activist
+## 3         Unknown  25     Activist
+## 4             VPN   1     Activist
+## 5 Web application 102     Activist
+## 6           Other   1 Unaffiliated
+```
+
+
+Now we can create all sorts of views of this data.
+For example a faceted bar plot comparing the two:
+
+
+```r
 gg <- ggplot(hacking.actor, aes(x = enum, y = x))
 gg <- gg + geom_bar(stat = "identity", fill = "steelblue")
 gg <- gg + facet_wrap(~primary, ncol = 2)
@@ -92,5 +111,20 @@ gg <- gg + coord_flip() + theme_bw()
 print(gg)
 ```
 
-![plot of chunk unnamed-chunk-6](figure/unnamed-chunk-6.png) 
+![plot of chunk unnamed-chunk-7](figure/unnamed-chunk-7.png) 
 
+
+Or perhaps a heat map with the count in the box:
+
+```r
+gg <- ggplot(hacking.actor, aes(x = enum, y = primary, fill = x, label = x))
+gg <- gg + geom_tile() + geom_text()
+gg <- gg + scale_fill_gradient(low = "#D8EEFE", high = "#4682B4")
+gg <- gg + ylab("External Variety") + xlab("Hacking Vector")
+gg <- gg + ggtitle("External Actors by Hacking Vector")
+gg <- gg + theme_bw()
+gg <- gg + theme(axis.text.x = element_text(angle = 90, hjust = 1), legend.position = "none")
+print(gg)
+```
+
+![plot of chunk unnamed-chunk-8](figure/unnamed-chunk-8.png) 
