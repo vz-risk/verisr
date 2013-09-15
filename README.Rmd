@@ -43,11 +43,13 @@ print(gg)
 
 In progress: searching by two enumerations:
 
-```{r}
-hacking.actor <- getenumby(vcdb, "action.hacking.variety", "actor.external.variety")
+```{r fig.height=10}
+hacking.actor <- getenumby(vcdb, "action.hacking.vector", "actor.external.variety")
 gg <- ggplot(hacking.actor, aes(x=enum, y=x))
 gg <- gg + geom_bar(stat="identity", fill="steelblue")
 gg <- gg + facet_wrap( ~ primary, ncol=2)
+gg <- gg + ylab("Incidents") + xlab("Hacking Vector") 
+gg <- gg + ggtitle("External Actors by Hacking Vector")
 gg <- gg + coord_flip() + theme_bw()
 print(gg)
 ```
