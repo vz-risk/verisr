@@ -7,7 +7,8 @@ Icon
 .Rhistory
 .RData
 .RDataTmp
-README.html
+testing*.R
+ignore/*
 
 <<<<<<< HEAD
 .dropbox
@@ -44,4 +45,3 @@ $RECYCLE.BIN/
 >>>>>>> b0e3616219735a95f64240a81c62881f41b8989a
 
 *.ipynb
-

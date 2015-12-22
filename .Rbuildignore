@@ -3,3 +3,5 @@
 README.Rmd
 README.html
 figure
+ignore
+^1\.0
