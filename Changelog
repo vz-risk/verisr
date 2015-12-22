@@ -1,0 +1,39 @@
+verision 2.0:
+
+* added sample data "veris.sample", this will allow quick exploration and samples to function
+* foldmatrix: several arguments were changed and removed, will require rework in existing code.
+* foldmatrix: enabled seperate variables of "rows" and "cols" to specify the rows and columns of output matrix 
+* foldmatrix: rows can be a named list of logical to be used as a filter, or a list of column names of logicals
+* foldmatrix: the "clean" variable is now defaulting to TRUE
+* getenumlist is removed, the new data.table format allows direct query of columns
+
+Version 2.0.1:
+
+* a few bug fixes, problems with json loading in json2veris() is fixed
+* getenum and getenumby() are now one function that are interchangable
+* internal `getpattern` function now returns a data table to cbind with core data set, it enables querying for "pattern" in getenum in an easier way.
+* getenum with more than one enum (what getenumby() did), now returns a different column name, since the columns are now bound by a "primary" qnd "secondary" limitation the columns are named "enum", "enum1", "enum2" and so on for each enum passed in.
+
+Version 2.0.2:
+
+* minor bug fixes
+* Added in 'plota4' function in graphics.R to return ggplot2 object with a4 grid
+
+Version 2.0.3:
+
+* added in 'exclusive' parameter to getenum function.  This will enable a query where an identified Unknown column will return only if exclusive.  As an example, if action.hacking.variety is queried, one record has "SQLi" and "Unknown", and another record has just "Unknown", it will only count the latter (since "Unknown" in the former is not the only exclusive value set in the record).
+
+Version 2.0.4:
+
+* fixed bug in getenum that would error would non-factor column was empty
+* minor update to matrix.R and the pattern assignment
+* added proc.time() to json2veris (if progressbar==T)
+
+Verison 2.0.5:
+
+* Quick bug fix in getenum()
+
+Version 2.0.6:
+
+* json2veris would silently add columns not in the schema, it now produces a warning
+* postproc now replaces NA's in all logical columns with FALSE (related to above)
