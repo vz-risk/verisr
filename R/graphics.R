@@ -65,7 +65,7 @@ plota4 <- function(veris, title="A4 Grid", freq=T) {
   }
   ggplot(a4, aes(enum, enum3, fill=freq, label=label)) +
     facet_grid(enum1~enum2) +
-    geom_tile(fill="white", color="gray95", label=NA) +
+    geom_tile(fill="white", color="gray95") +
     scale_y_discrete(expand=c(0,0)) + scale_x_discrete(expand=c(0,0)) +
     geom_tile(data=colorlab, color="gray95") + 
     ggtitle(paste0(title, ", n=", format(a4$n[1], big.mark=",", scientific=F))) +
