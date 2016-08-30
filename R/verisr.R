@@ -785,6 +785,86 @@ getlogical <- function(veris) {
 }
 
 
+#' Extract counts from one enumeration (will add functionality for two)
+#'
+#' Incorporates binomial and multinomial confidence intervals 
+#'
+getenumCI <- function(veris, enum, na = NULL, unk=FALSE, short_names=TRUE, ci.method=c(), ci.level=0.95, round_freq=5, ...) {
+  library(MultinomialCI)
+  library(binom)
+  library(stringr)
+  
+  df <- as.data.frame(veris)
+  
+  df <- df[, grepl(paste0("^",enum,"[.][A-Z0-9][^.]*$"), names(df))]
+  if (ncol(df) <= 0) { stop(paste(c("No columns matched feature(s) ", enum, " using regex ", paste0("^",enum,"[.][A-Z0-9][^.]*$"), collapse=" ")))}
+  if (unk == FALSE) {
+    df_for_n <- df[, !grepl(".Unknown$", names(df))]
+  } else {
+    df_for_n <- df
+  }
+  
+  if (is.null(na) & any(grep("[.]NA$", names(df)))) { stop("'na' must be specified if any column names end in .NA")}
+  
+  if (!is.null(na)) {
+    if (na == FALSE) {
+      df_for_n <- df_for_n[, !grepl(".NA$", names(df_for_n)), ]
+    }
+  }
+  
+  # number of records
+  n <- sum(rowSums(df_for_n) > 0)
+  # count of each enumeration
+  v <- colSums(df)  # used instead of a loop or plyr::count to compute x
+  # apply the multinomial confidence interval to the first (correct) value and ignore the 2nd one which is just there to balance it
+  # (I know I'm doing each multinomial separately.  Testing showed that changing other rows (other than the sum of x) doesn't change anything)
+  # bind enums, x, n, freq, lower and upper confidence intervals
+  if ("multinomial" %in% c(ci.method)) {
+    # each enumeration and number or records - the count for use in multinomal Confidence interval
+    multiCI_chunk <- data.frame(enum=names(v), x=v, n=rep(n, length(v))-v)
+    chunk <- data.frame(names(v), v, rep(n, length(x)), v/n, t(apply(multiCI_chunk, MARGIN=1, function(x) {multinomialCI(as.numeric(x), ci)[1, ] })))
+    #chunk <- bind_cols(chunk, t(apply(chunk, MARGIN=1, function(x) {multinomialCI(as.numeric(x), ci.level)[1, ] })))
+    # remove the multinomial method before the next step
+    ci.method <- c(ci.method)[which(ci.method=="multinomial")]
+    names(chunk) <- c("enum", "x", "n", "freq", "lower", "upper")
+  } else {
+    chunk <- data.frame(enum=names(v), x=v, n=rep(n, length(v)), freq=v/n)
+  }
+  if (length(ci.method) > 0) {
+    chunk <- bind_cols(chunk, binom.confint(chunk$x, chunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
+  }
+
+  # n is not applicable for Unknown (and potentially na) rows so zero it out
+  if (unk == FALSE) {
+    chunk[grepl("^(.+[.]|)Unknown$", chunk$enum), c("n", "freq")] <- NA
+  }
+  if (!is.null(na)) {
+    if (na == FALSE) {
+      chunk[grepl("^(.+[.]|)NA$", chunk$enum), c("n", "freq")] <- NA
+    }
+  }
+  
+  # if short names, only use the bit of the enum name after the last period
+  if (short_names) {
+    chunk$enum <- str_match(chunk$enum, "[^.]+$")
+  }
+  
+  if (round_freq>0) {
+    chunk$freq <- round(chunk$freq, round_freq)
+  }
+  
+  # reorder output
+  chunk <- chunk[order(-chunk$freq), ]
+
+  # replace row numbers
+  rownames(chunk) <- seq(length=nrow(chunk))
+  
+  # return
+  chunk
+}
+
+
+
 #' Metadata for 2-digit NAICS industry classification
 #'
 #' This data allows a mapping between two digit NAICS code and the 
