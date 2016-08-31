@@ -66,7 +66,8 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   vft <- getverisdf(lschema, a4)
   # now create a data table with the specific blank types
   # we just pulled from getverisdf()
-  veris <- as.data.table(lapply(seq_along(vft), function(i) {
+  #veris <- as.data.table(lapply(seq_along(vft), function(i) {
+  veris <- as.data.frame(lapply(seq_along(vft), function(i) {
     if (vft[i]=="character") rep(NA_character_, numfil)
     else if (vft[i]=="logical") rep(FALSE, numfil)
     else if (vft[i]=="integer") rep(NA_real_, numfil)
@@ -550,7 +551,8 @@ getenum.single <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
       ret <- setNames(colSums(veris[filter ,thisn, with=F]), getlast(thisn))
     }
     ret <- ret[ret>0]
-    outdf <- data.table(enum=names(ret), x=ret)
+    #outdf <- data.table(enum=names(ret), x=ret)
+    outdf <- data.frame(enum=names(ret), x=ret)
     n <- sum(rowSums(veris[filter ,thisn, with=F]) > 0)
     if (n==0) return(data.frame())
     if (add.n) outdf$n <- n
@@ -655,7 +657,8 @@ getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
     }
     
     thisn$x <- 0
-    outdf <- as.data.table(expand.grid(thisn))
+    #outdf <- as.data.table(expand.grid(thisn))
+    outdf <- as.data.frame(expand.grid(thisn))
     cnm <- colnames(outdf)[1:(ncol(outdf)-1)]
     # just look in first enum (exclusive) for unknowns
     myunks <- unique(unlist(sapply(c("Unknown", " - Other", "unknown"), function(p) grep(p, thisn[[1]])), use.names=F))
