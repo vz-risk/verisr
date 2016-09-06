@@ -66,8 +66,8 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   vft <- getverisdf(lschema, a4)
   # now create a data table with the specific blank types
   # we just pulled from getverisdf()
-  #veris <- as.data.table(lapply(seq_along(vft), function(i) {
-  veris <- as.data.frame(lapply(seq_along(vft), function(i) {
+  veris <- as.data.table(lapply(seq_along(vft), function(i) {
+  #veris <- as.data.frame(lapply(seq_along(vft), function(i) {
     if (vft[i]=="character") rep(NA_character_, numfil)
     else if (vft[i]=="logical") rep(FALSE, numfil)
     else if (vft[i]=="integer") rep(NA_real_, numfil)
@@ -791,9 +791,7 @@ getlogical <- function(veris) {
 
 #' Summarizes veris enumerations from verisr objects
 #' 
-#' Extract counts from one or more enumerations
-#'
-#' Incorporates binomial and multinomial confidence intervals 
+#' stuff goes here
 #' 
 #' @param veris A verisr object
 #' @param enum A veris feature or enumeration to summarize
@@ -942,13 +940,13 @@ getenumCI <- function(veris,
       n <- sum(v)
       # remove unknowns
       if (unk == FALSE) {
-        n <- n - v[grep("Unknown", names(v))]
+        n <- n - sum(v[grepl("^(.+[.]|)Unknown$", names(v))])
       }
 
       # remove NAs
       if (!is.null(na)) {
         if (unk == FALSE) {
-          n <- n - v[grep("NA", names(v))]
+          n <- n - sum(v[grepl("^(.+[.]|)NA$", names(v))])
         }
       }
       
