@@ -553,8 +553,8 @@ getenum.single <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
       ret <- setNames(colSums(veris[filter ,thisn, with=F]), getlast(thisn))
     }
     ret <- ret[ret>0]
-    #outdf <- data.table(enum=names(ret), x=ret)
-    outdf <- data.frame(enum=names(ret), x=ret)
+    outdf <- data.table(enum=names(ret), x=ret)
+    #outdf <- data.frame(enum=names(ret), x=ret)
     n <- sum(rowSums(veris[filter ,thisn, with=F]) > 0)
     if (n==0) return(data.frame())
     if (add.n) outdf$n <- n
@@ -659,8 +659,8 @@ getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
     }
     
     thisn$x <- 0
-    #outdf <- as.data.table(expand.grid(thisn))
-    outdf <- as.data.frame(expand.grid(thisn))
+    outdf <- as.data.table(expand.grid(thisn))
+    #outdf <- as.data.frame(expand.grid(thisn))
     cnm <- colnames(outdf)[1:(ncol(outdf)-1)]
     # just look in first enum (exclusive) for unknowns
     myunks <- unique(unlist(sapply(c("Unknown", " - Other", "unknown"), function(p) grep(p, thisn[[1]])), use.names=F))
@@ -817,19 +817,24 @@ getlogical <- function(veris) {
 #' @return A data frame summarizing the enumeration
 #' @export
 #' @examples 
+#' tmp <- tempfile(fileext = ".dat")
 #' download.file("https://github.com/vz-risk/VCDB/raw/master/data/verisr/vcdb.dat", tmp, quiet=TRUE)
 #' load(tmp, verbose=TRUE)
 #' chunk <- getenumCI(vcdb, "action.hacking.variety")
 #' chunk
 #' chunk <- getenumCI(vcdb, "action.hacking.variety", by="timeline.incident.year")
 #' chunk
-#' getenumCI(vcdb, "action.hacking.variety", by="timeline.incident.year") %>% reshape2::acast(by~enum, fill=0)
+#' chunk <- getenumCI(vcdb, 
+#'                    "action.hacking.variety", 
+#'                    by="timeline.incident.year") 
+#' reshape2::acast(chunk, by~enum, fill=0)
 #' getenumCI(vcdb, "action")
 #' getenumCI(vcdb, "asset.variety")
 #' getenumCI(vcdb, "asset.assets.variety")
 #' getenumCI(vcdb, "asset.assets.variety", ci.method="wilson")
 #' getenumCI(vcdb, "asset.cloud")
 #' getenumCI(vcdb, "action.social.variety.Phishing")
+#' getenumCI(vcdb, "actor.*.motive", ci.method="wilson", na=FALSE)
 getenumCI <- function(veris, 
                       enum, 
                       by=NULL,
@@ -932,6 +937,16 @@ getenumCI <- function(veris,
       # count of each enumeration
       v <- colSums(subdf)  # used instead of a loop or plyr::count to compute x
       
+      # If names are shortened, make sure to combine like-named columns
+      if (short_names) {
+        names(v) <- stringr::str_match(names(v), "[^.]+$")
+        v <- unlist(lapply(unique(names(v)), function(x) {
+          ret <- sum(v[names(v)==x])
+          names(ret) <- x
+          ret
+        }))
+      }
+      
     } else if (enum_type == "single_column") {
       table_v <- table(subdf[[enum_enums]])
       v <- as.integer(table_v)
@@ -971,34 +986,46 @@ getenumCI <- function(veris,
       stop("class of 'enum' column(s) was not identified, preventing summarization.")
     }
     
-    ### removing multinomial ci function. need to debug and/or just move to getenumset(). - gdb 090116
-    ## apply the multinomial confidence interval to the first (correct) value and ignore the 2nd one which is just there to balance it
-    # (I know I'm doing each multinomial separately.  Testing showed that changing other rows (other than the sum of x) doesn't change anything)
-    # bind enums, x, n, freq, lower and upper confidence intervals
-    #if ("multinomial" %in% c(ci.method)) {
-    #  # each enumeration and number or records - the count for use in multinomal Confidence interval
-    #  multiCI_chunk <- data.frame(enum=names(v), x=v, n=rep(n, length(v))-v)
-    #  subchunk <- data.frame(names(v), v, rep(n, length(x)), v/n, t(apply(multiCI_chunk, MARGIN=1, function(x) {MultinomialCI::multinomialCI(as.numeric(x), ci)[1, ] })))
-    #  #chunk <- bind_cols(subchunk, t(apply(subchunk, MARGIN=1, function(x) {MultinomialCI::multinomialCI(as.numeric(x), ci.level)[1, ] })))
-    #  # remove the multinomial method before the next step
-    #  ci.method <- c(ci.method)[which(ci.method=="multinomial")]
-    #  names(subchunk) <- c("enum", "x", "n", "freq", "lower", "upper")
-    #} else {
-      subchunk <- data.frame(enum=names(v), x=v, n=rep(n, length(v)), freq=v/n)
-    #}
-    if (length(ci.method) > 0) {
-      subchunk <- bind_cols(subchunk, binom::binom.confint(subchunk$x, subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
-    }
+    # create the chunk for this 'by'
+    subchunk <- data.frame(enum=names(v), x=v, n=rep(n, length(v)), freq=v/n)
+    enum_subchunk <- subchunk[!grepl("^(.+[.]|)Unknown$", subchunk$enum) & !grepl("^(.+[.]|)NA$", subchunk$enum), ]
+    unk_subchunk <- subchunk[grepl("^(.+[.]|)Unknown$", subchunk$enum), ]
+    na_subchunk <- subchunk[grepl("^(.+[.]|)NA$", subchunk$enum), ]
     
     # n is not applicable for Unknown (and potentially na) rows so zero it out
-    if (unk == FALSE) {
-      subchunk[grepl("^(.+[.]|)Unknown$", subchunk$enum), c("n", "freq")] <- NA
+    if (unk == FALSE & nrow(unk_subchunk) > 0) {
+      unk_subchunk[ , c("n", "freq")] <- NA
     }
     if (!is.null(na)) {
-      if (na == FALSE) {
-        subchunk[grepl("^(.+[.]|)NA$", subchunk$enum), c("n", "freq")] <- NA
+      if (na == FALSE & nrow(na_subchunk) > 0) {
+        na_subchunk[ , c("n", "freq")] <- NA
       }
     }
+      
+    # apply the confidence interval.  Apply to NA's and unk separately depending on if selected. (If you try and apply CI's cart blanc to the NA/Unknowns it can error out on binding the columns)
+    if (length(ci.method) > 0) {
+      # subchunk <- dplyr::bind_cols(subchunk, binom::binom.confint(subchunk$x, subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
+      enum_subchunk <- dplyr::bind_cols(enum_subchunk, binom::binom.confint(enum_subchunk$x, enum_subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
+      if (unk == FALSE) {
+        unk_subchunk <- dplyr::bind_cols(unk_subchunk, data.frame(method=rep(NA, nrow(unk_subchunk)), lower=rep(NA, nrow(unk_subchunk)), upper=rep(NA, nrow(unk_subchunk))))
+      } else if (nrow(unk_subchunk >0)) {
+        unk_subchunk <- dplyr::bind_cols(unk_subchunk, binom::binom.confint(unk_subchunk$x, unk_subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
+      } else {
+        unk_subchunk <- data.frame()
+      }
+      if (!is.null(na)) {
+        if (na == FALSE) {
+          na_subchunk <- dplyr::bind_cols(na_subchunk, data.frame(method=rep(NA, nrow(na_subchunk)), lower=rep(NA, nrow(na_subchunk)), upper=rep(NA, nrow(na_subchunk))))
+        } else if (nrow(na_subchunk > 0)) {
+          na_subchunk <- dplyr::bind_cols(na_subchunk, binom::binom.confint(na_subchunk$x, na_subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
+        } else {
+          na_subchunk <- data.frame()
+        }
+      }
+    }
+    
+    # recombine the portions of the subchunk
+    subchunk <- rbind(enum_subchunk, na_subchunk, unk_subchunk)
     
     # add the 'by' column
     subchunk <- cbind(rep(x, nrow(subchunk)), subchunk)
@@ -1033,6 +1060,9 @@ getenumCI <- function(veris,
     
   # replace row numbers
   rownames(chunk) <- seq(length=nrow(chunk))
+  
+  # somehow enum ends up as a 1-column matrix.  This messes with dplyr.  The below line fixes it. - gdb 081516
+  chunk$enum <- as.character(chunk$enum)
   
   # return
   chunk
