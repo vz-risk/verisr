@@ -1,12 +1,11 @@
 Package: verisr
 Type: Package
 Title: Tools for working with VERIS objects
-Version: 3.0.0.9000
+Version: 3.0.0.9001
 Date: 2016-08-30
-Author@R: c(
-    person("Gabriel", "Bassett", email = "gabriel.bassett@verizon.com", role = c("cre", "aut")),
-    person("Anastasia", "Atanasoff", email = "anastasia.atanasoff@verizon.com", role = "aut")
-    )
+Authors@R: c( person("Gabriel", "Bassett", email = "gabriel.bassett@verizon.com",
+    role = c("cre", "aut")), person("Anastasia", "Atanasoff", email =
+    "anastasia.atanasoff@verizon.com", role = "aut") )
 Description: Loads up VERIS JSON objects and offers convenience functions
 License: GPL-2
 Depends:
@@ -15,3 +14,4 @@ Imports:
     rjson,RCurl,data.table,ggplot2,gridExtra,grid
 Suggests:
     testthat
+RoxygenNote: 5.0.1

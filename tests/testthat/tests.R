@@ -5,7 +5,8 @@ test_that("a new verisr object has the correct number of records", {
 })
 
 test_that("a new verisr object has the correct classes", {
-  expect_equal(class(vr), c("verisr", "data.table", "data.frame"))
+  # expect_equal(class(vr), c("verisr", "data.table", "data.frame")) # changed to match updated json2veris. 17-01-17 GDB
+  expect_equal(class(vr), c("verisr", "data.frame"))
 })
 
 test_that("a new verisr object has these columns", {
