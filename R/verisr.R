@@ -81,6 +81,7 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   for(i in seq_along(jfiles)) {
     json <- fromJSON(file=jfiles[i], method='C')
     nfield <- nameveris(json, a4, vtype)
+    names
     if (length(nfield)==0) warning(paste("empty json file parsed from", jfiles[i]))
     nomatch <- !(names(nfield) %in% colnames(veris))
     if (any(nomatch)) {
@@ -108,7 +109,9 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   }
   if (!is.null(pb)) close(pb)
   # Not Applicable is replaced with NA for consistency
-  colnames(veris) <- gsub('Not Applicable', 'NA', colnames(veris), ignore.case=TRUE)
+  # WARNING: the below line causes duplicates and overwrites legitimate 'Not Applicable' enumerations (such as plus.attack_difficulty_initial) so removing
+  #  Instead, need to standardize NAs in veris.
+  # colnames(veris) <- gsub('Not Applicable', 'NA', colnames(veris), ignore.case=TRUE) # this causes more problems than it solves. 17-01-17 GDB
   veris <- post.proc(veris)
   veris <- as.data.frame(veris) # convert data.table to data.frame because data tables are evil. - 17-01-17
   class(veris) <- c("verisr", class(veris))
