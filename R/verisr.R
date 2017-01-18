@@ -60,10 +60,10 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   jfiles <- unlist(sapply(dir, list.files, pattern = "json$", full.names=T))
   numfil <- length(jfiles)
   # need to pull these before we loop, used over and over in loop
-  a4 <- geta4names()
-  vtype <- parseProps(lschema)
+  a4 <- geta4names() # just returns a (named) character vector of the 4A's and their next level values.  i.e. actor.External
+  vtype <- parseProps(lschema) # recursively parse the schema. returns a named character vector. names=column, value=class. (no enumerations)
   # get a named vector of field and types
-  vft <- getverisdf(lschema, a4)
+  vft <- getverisdf(lschema, a4) # we now have all the columns we need
   # now create a data table with the specific blank types
   # we just pulled from getverisdf()
   veris <- as.data.table(lapply(seq_along(vft), function(i) {
@@ -107,6 +107,7 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   }
   if (!is.null(pb)) close(pb)
   veris <- post.proc(veris)
+  veris <- as.data.frame(veris) # convert data.table to data.frame because data tables are evil. - 17-01-17
   class(veris) <- c("verisr", class(veris))
   if(progressbar) {
     print(proc.time() - savetime)
@@ -201,6 +202,9 @@ parseProps <- function(schema, cur="", outvec=NULL) {
         setto <- "double"
       } else if (schema[['type']] == 'integer') {
         setto <- "integer"
+      # Below three lines added to deal with new logical features in veris 1.3.1. - 17-01-17
+      } else if (schema[['type']] == 'boolean') {
+        setto <- "logical"
       }
       vnames <- c(names(outvec), cur)
       outvec <- c(outvec, setto)
@@ -229,7 +233,10 @@ veriscol <- function(schema) {
   gfields <- c("^ioc", # "^impact",   # 2.0.6 change, putting impact back in
                "attribute.confidentiality.data.amount", 
                "asset.assets.amount")
+  # remove the asset.assets.amount and attribute.confidentiality.data.amount columns that are not associated with their variety from rawfields
   clean <- rawfields[grep(paste(gfields, collapse="|"), rawfields, invert=T)]
+  # Normally, mkenums returns asset.assets.amount & asset.assets.variety w/o acknowledging the relationship.  The below fixes that.
+  #  Same for attribute.confidentiality.data.variety.  without it it'd just be attribute.confidentiality.data.amount
   wonkyvariety <- clean[grep('asset.assets.variety|attribute.confidentiality.data.variety', clean)]
   wonkyamount <- sapply(strsplit(wonkyvariety, "[.]"), function(x) {
     x[x=="variety"] <- "amount"
@@ -248,22 +255,32 @@ veriscol <- function(schema) {
 #' @param outvec the vector passed around building the output
 #' @keywords json
 mkenums <- function(schema, cur="", outvec=NULL) {
+  # HANDLES LISTS/ARRAYS
   if ('items' %in% names(schema)) {
-    if ('enum' %in% names(schema[['items']])) {
-      outvec <- c(outvec, paste(cur, schema[['items']][['enum']], sep='.'))
+    # HANDLES STRINGS IN LISTS/ARRAYS
+    if ('enum' %in% names(schema[['items']])) { 
+      outvec <- c(outvec, paste(cur, schema[['items']][['enum']], sep='.')) 
     } else {
-      outvec <- mkenums(schema[['items']], cur, outvec)
+      # HANDLES ALL ELSE, MOST LIKELY OBJECTS IN LISTS/ARRAYS
+      outvec <- mkenums(schema[['items']], cur, outvec) # otherwise, recurse on each item
     }
+  # if there's no 'items', it's not an array (list) and so we need to check type
   } else if ('type' %in% names(schema)) {
+    # HANDLES OBJECTS
     if(schema[['type']]=='object') {
+      # if it's an object, we need to recurse on the properties portion of the object
       outvec <- mkenums(schema[['properties']], cur, outvec)
+    # HANDLES STRINGS
     } else if ('enum' %in% names(schema)) {
       outvec <- c(outvec, paste(cur, schema[['enum']], sep='.'))
+    # HANDLES INTEGERS, NUMERICS, and BOOLEANS
     } else {
       outvec <- c(outvec, cur)
     }
   } else {
     for(x in names(schema)) {
+      # HANDLES ANYTHING WITHOUT A TYPE
+      # (does so by just recursing on all properties of the thing)
       newcur <- ifelse(nchar(cur), paste(cur, x, sep='.'), x)
       outvec <- mkenums(schema[[x]], newcur, outvec)
     }
@@ -283,10 +300,10 @@ mkenums <- function(schema, cur="", outvec=NULL) {
 getverisdf <- function(lschema, a4) {
   # get a named vector of VERIS objects
   # e.g. c("action.hacking.variety" = "enum")
-  vtype <- parseProps(lschema)
+  vtype <- parseProps(lschema) # named
   # get a vector of veris columns
   # e.g. c("action.hacking.variety.Brute force", "action.hacking.variety.SQLi"...)
-  vfield <- veriscol(lschema)
+  vfield <- veriscol(lschema) # not named
   out <- sapply(vfield, function(x) {
     ret <- vtype[x]
     if (is.na(ret)) {
@@ -296,7 +313,7 @@ getverisdf <- function(lschema, a4) {
     }
     ifelse(ret=="enum", "logical", ret)
   }, USE.NAMES=F)
-  out <- c(out, rep("logical", length(a4)))
+  out <- c(out, rep("logical", length(a4))) # add the convenience columns
   setNames(out, c(vfield, names(a4)))
 }
 
