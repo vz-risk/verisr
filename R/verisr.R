@@ -67,6 +67,7 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   # now create a data table with the specific blank types
   # we just pulled from getverisdf()
   veris <- as.data.table(lapply(seq_along(vft), function(i) {
+  #veris <- as.data.frame(lapply(seq_along(vft), function(i) {
     if (vft[i]=="character") rep(NA_character_, numfil)
     else if (vft[i]=="logical") rep(FALSE, numfil)
     else if (vft[i]=="integer") rep(NA_real_, numfil)
@@ -106,6 +107,8 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
     if (!is.null(pb)) setTxtProgressBar(pb, i)
   }
   if (!is.null(pb)) close(pb)
+  # Not Applicable is replaced with NA for consistency
+  colnames(veris) <- gsub('Not Applicable', 'NA', colnames(veris), ignore.case=TRUE)
   veris <- post.proc(veris)
   veris <- as.data.frame(veris) # convert data.table to data.frame because data tables are evil. - 17-01-17
   class(veris) <- c("verisr", class(veris))
@@ -568,6 +571,7 @@ getenum.single <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
     }
     ret <- ret[ret>0]
     outdf <- data.table(enum=names(ret), x=ret)
+    #outdf <- data.frame(enum=names(ret), x=ret)
     n <- sum(rowSums(veris[filter ,thisn, with=F]) > 0)
     if (n==0) return(data.frame())
     if (add.n) outdf$n <- n
@@ -673,6 +677,7 @@ getenum <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
     
     thisn$x <- 0
     outdf <- as.data.table(expand.grid(thisn))
+    #outdf <- as.data.frame(expand.grid(thisn))
     cnm <- colnames(outdf)[1:(ncol(outdf)-1)]
     # just look in first enum (exclusive) for unknowns
     myunks <- unique(unlist(sapply(c("Unknown", " - Other", "unknown"), function(p) grep(p, thisn[[1]])), use.names=F))
@@ -801,69 +806,262 @@ getlogical <- function(veris) {
   names(our.cols[grep('^logical$', our.cols)])
 }
 
-
-#' Extract counts from one enumeration (will add functionality for two)
-#'
-#' Incorporates binomial and multinomial confidence intervals 
-#'
-getenumCI <- function(veris, enum, na = NULL, unk=FALSE, short_names=TRUE, ci.method=c(), ci.level=0.95, round_freq=5, ...) {
-  library(MultinomialCI)
-  library(binom)
-  library(stringr)
+#' Summarizes veris enumerations from verisr objects
+#' 
+#' stuff goes here
+#' 
+#' @param veris A verisr object
+#' @param enum A veris feature or enumeration to summarize
+#' @param by A veris feature or enumeration to group by
+#' @param na A boolean of whether to include not applicable in the sample set.
+#'     This is REQUIRED if enum has a potential value of NA as there is no 
+#'     'default' method for handling NAs.  Instead, it depends on the 
+#'     hypothesis being tested.
+#' @param unk A boolean referring whether to include 'unknown' in the sample.
+#'     The default is 'FALSE' and should rarely be overwritten.
+#' @param short_names A boolean identifying whether to use the full enumeration
+#'     name or just the last section. (i.e. action.hacking.variety.SQLi vs
+#'     just SQLi.)
+#' @param ci.method A confidence interval method to use.  Current supported
+#'     methods are any from binom.confint() or "multinomial".  If unsure
+#'     which to use, use "wilson".
+#' @param ci.level A number from 0 to 1 representing the width of the 
+#'     confidence interval. (default = 0.95)
+#' @param round_freq An integer indicating how many places to round
+#'     the frequency value to. (default = 5)
+#' @param ... A catch all for functions using arguments from previous
+#'     versions of getenum.
+#' @return A data frame summarizing the enumeration
+#' @export
+#' @examples 
+#' tmp <- tempfile(fileext = ".dat")
+#' download.file("https://github.com/vz-risk/VCDB/raw/master/data/verisr/vcdb.dat", tmp, quiet=TRUE)
+#' load(tmp, verbose=TRUE)
+#' chunk <- getenumCI(vcdb, "action.hacking.variety")
+#' chunk
+#' chunk <- getenumCI(vcdb, "action.hacking.variety", by="timeline.incident.year")
+#' chunk
+#' chunk <- getenumCI(vcdb, 
+#'                    "action.hacking.variety", 
+#'                    by="timeline.incident.year") 
+#' reshape2::acast(chunk, by~enum, fill=0)
+#' getenumCI(vcdb, "action")
+#' getenumCI(vcdb, "asset.variety")
+#' getenumCI(vcdb, "asset.assets.variety")
+#' getenumCI(vcdb, "asset.assets.variety", ci.method="wilson")
+#' getenumCI(vcdb, "asset.cloud")
+#' getenumCI(vcdb, "action.social.variety.Phishing")
+#' getenumCI(vcdb, "actor.*.motive", ci.method="wilson", na=FALSE)
+getenumCI <- function(veris, 
+                      enum, 
+                      by=NULL,
+                      na = NULL, 
+                      unk=FALSE, 
+                      short_names=TRUE, 
+                      ci.method=c(), 
+                      ci.level=0.95, 
+                      round_freq=5, 
+                      ...) {
   
-  df <- as.data.frame(veris)
-  
-  df <- df[, grepl(paste0("^",enum,"[.][A-Z0-9][^.]*$"), names(df))]
-  if (ncol(df) <= 0) { stop(paste(c("No columns matched feature(s) ", enum, " using regex ", paste0("^",enum,"[.][A-Z0-9][^.]*$"), collapse=" ")))}
-  if (unk == FALSE) {
-    df_for_n <- df[, !grepl(".Unknown$", names(df))]
+  # legacy veris objects are data tables, however data tables cause problems.
+  if (data.table::is.data.table(veris)) {
+    df <- as.data.frame(veris)
   } else {
-    df_for_n <- df
+    df <- veris
   }
   
-  if (is.null(na) & any(grep("[.]NA$", names(df)))) { stop("'na' must be specified if any column names end in .NA")}
+  # because we aren't keeping the 'method' and don't want to duplicate rows for each method, only 1 allowed.
+  if (length(ci.method) > 1) {
+    warning("More than one confidence interval method specified. Using first.")
+    ci.method <- ci.method[1]
+  }
   
-  if (!is.null(na)) {
-    if (na == FALSE) {
-      df_for_n <- df_for_n[, !grepl(".NA$", names(df_for_n)), ]
+  # create a list of enumerations to calculate 'enum' _by_
+  if (!is.null(by)) {
+    by_enums <- grep(paste0("^",by,"[.][A-Z0-9][^.]*$"), names(df), value=TRUE)
+    if (length(by_enums) > 0) {
+      by_type <- "multinomial"
+    } else {
+      by_enums <- grep(paste0("^",by,"$"), names(df), value=TRUE)
+      if (length(by_enums) == 1) { # could be > 0, but this should help throw errors when not functioning properly. - gdb 090116
+        by_enums <- unique(df[[by]])
+        by_type <- "single_column"
+      } else {
+        warning(paste0("No column matching 'by' value ", by, ". Ignoring 'by' value."))
+        by_enums <- c(NA)
+        by_type <- "none"
+      }
     }
-  }
-  
-  # number of records
-  n <- sum(rowSums(df_for_n) > 0)
-  # count of each enumeration
-  v <- colSums(df)  # used instead of a loop or plyr::count to compute x
-  # apply the multinomial confidence interval to the first (correct) value and ignore the 2nd one which is just there to balance it
-  # (I know I'm doing each multinomial separately.  Testing showed that changing other rows (other than the sum of x) doesn't change anything)
-  # bind enums, x, n, freq, lower and upper confidence intervals
-  if ("multinomial" %in% c(ci.method)) {
-    # each enumeration and number or records - the count for use in multinomal Confidence interval
-    multiCI_chunk <- data.frame(enum=names(v), x=v, n=rep(n, length(v))-v)
-    chunk <- data.frame(names(v), v, rep(n, length(x)), v/n, t(apply(multiCI_chunk, MARGIN=1, function(x) {multinomialCI(as.numeric(x), ci)[1, ] })))
-    #chunk <- bind_cols(chunk, t(apply(chunk, MARGIN=1, function(x) {multinomialCI(as.numeric(x), ci.level)[1, ] })))
-    # remove the multinomial method before the next step
-    ci.method <- c(ci.method)[which(ci.method=="multinomial")]
-    names(chunk) <- c("enum", "x", "n", "freq", "lower", "upper")
   } else {
-    chunk <- data.frame(enum=names(v), x=v, n=rep(n, length(v)), freq=v/n)
+    by_enums <- c(NA)
+    by_type <- "none"
   }
-  if (length(ci.method) > 0) {
-    chunk <- bind_cols(chunk, binom.confint(chunk$x, chunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
-  }
-
-  # n is not applicable for Unknown (and potentially na) rows so zero it out
-  if (unk == FALSE) {
-    chunk[grepl("^(.+[.]|)Unknown$", chunk$enum), c("n", "freq")] <- NA
-  }
-  if (!is.null(na)) {
-    if (na == FALSE) {
-      chunk[grepl("^(.+[.]|)NA$", chunk$enum), c("n", "freq")] <- NA
+  
+  # we use do.call because we don't know how many things we'll be rbinding.
+  #  instead, we just get a list of them using lapply and then rbind
+  #  on that list.
+  chunk <- do.call(rbind, lapply(by_enums, function(x) {
+    
+    # subset DF to just the portion we're currently dealing with
+    if (by_type == "multinomial") {
+      subdf <- df[df[[x]], ]
+    } else if (by_type == "single_column") {
+      subdf <- df[df[[by]] == x, ]
+    } else { # catchall for by_type == 'none', i.e. keep the whole df
+      subdf <- df
     }
+    
+    # select the columns that match the enumeration and characterize it's/their type
+    enum_enums <- grep(paste0("^",enum,"[.][A-Z0-9][^.]*$"), names(subdf), value=TRUE)
+    if (length(enum_enums) > 0) {
+      enum_type <- "multinomial"
+    } else {
+      enum_enums <- grep(paste0("^",enum,"$"), names(subdf), value=TRUE)
+      if (length(enum_enums) == 1) { # could be > 0, but this should help throw errors when not functioning properly. - gdb 090116
+        if (is.logical(subdf[[enum_enums]])) {
+          enum_type <- "logical"
+        } else {
+          enum_type <- "single_column"
+        }
+      } else {
+        stop(paste0("Enum ", enum, " did not resolve to any columns."))
+      }
+    }
+    
+    # This allows us to handle numerical/factor/character and logical enumerations
+    if (enum_type == "multinomial") {
+      subdf <- subdf[, enum_enums]
+      
+      if (ncol(subdf) <= 0) { stop(paste(c("No columns matched feature(s) ", enum, " using regex ", paste0("^",enum,"[.][A-Z0-9][^.]*$"), collapse=" ")))}
+      
+      # we remove unknowns because they should normally not be counted
+      if (unk == FALSE) {
+        subdf_for_n <- subdf[, !grepl(".Unknown$", names(subdf))]
+      } else {
+        subdf_for_n <- subdf
+      }
+      
+      # Whether to use NAs or not depends on the hypothesis being tested so we require an answer (no default)
+      if (is.null(na) & any(grep("[.]NA$", names(subdf)))) { stop("'na' must be specified if any column names end in .NA")}
+      if (!is.null(na)) {
+        if (na == FALSE) {
+          subdf_for_n <- subdf_for_n[, !grepl(".NA$", names(subdf_for_n)), ]
+        }
+      }
+      
+      # number of records that have one of our enumerations
+      n <- sum(rowSums(subdf_for_n) > 0)
+      # count of each enumeration
+      v <- colSums(subdf)  # used instead of a loop or plyr::count to compute x
+      
+      # If names are shortened, make sure to combine like-named columns
+      if (short_names) {
+        names(v) <- stringr::str_match(names(v), "[^.]+$")
+        v <- unlist(lapply(unique(names(v)), function(x) {
+          ret <- sum(v[names(v)==x])
+          names(ret) <- x
+          ret
+        }))
+      }
+      
+    } else if (enum_type == "single_column") {
+      table_v <- table(subdf[[enum_enums]])
+      v <- as.integer(table_v)
+      names(v) <- names(table_v)
+      
+      n <- sum(v)
+      # remove unknowns
+      if (unk == FALSE) {
+        n <- n - sum(v[grepl("^(.+[.]|)Unknown$", names(v))])
+      }
+
+      # remove NAs
+      if (!is.null(na)) {
+        if (unk == FALSE) {
+          n <- n - sum(v[grepl("^(.+[.]|)NA$", names(v))])
+        }
+      }
+      
+    } else if (enum_type == "logical") {
+      v <- c(sum(subdf[[enum_enums]]))
+      names(v) <- enum_enums
+
+      enum_feature <- stringr::str_match(enum_enums, "^(.+)\\.")[1]
+      # need to remove where the enum is not true but the 'unknown' enumeration of the feature is.
+      if (unk == FALSE & paste0(enum_feature, "Unknown") %in% names(subdf)) {
+        subdf <- subdf[!(!subdf[[enum_enums]] & subdf[[paste0(enum_feature, "Unknown")]]), ]
+      }
+      # need to remove where the enum is not true but the 'na' enumeration of the feature is.
+      if (!is.null(na)) { 
+        if(na == FALSE & paste0(enum_feature, "NA") %in% names(subdf)) {
+          subdf <- subdf[!(!subdf[[enum_enums]] & subdf[[paste0(enum_feature, "NA")]]), ]
+        }
+      }
+      n <- nrow(subdf)
+      
+    } else {
+      stop("class of 'enum' column(s) was not identified, preventing summarization.")
+    }
+    
+    # create the chunk for this 'by'
+    subchunk <- data.frame(enum=names(v), x=v, n=rep(n, length(v)), freq=v/n)
+    enum_subchunk <- subchunk[!grepl("^(.+[.]|)Unknown$", subchunk$enum) & !grepl("^(.+[.]|)NA$", subchunk$enum), ]
+    unk_subchunk <- subchunk[grepl("^(.+[.]|)Unknown$", subchunk$enum), ]
+    na_subchunk <- subchunk[grepl("^(.+[.]|)NA$", subchunk$enum), ]
+    
+    # n is not applicable for Unknown (and potentially na) rows so zero it out
+    if (unk == FALSE & nrow(unk_subchunk) > 0) {
+      unk_subchunk[ , c("n", "freq")] <- NA
+    }
+    if (!is.null(na)) {
+      if (na == FALSE & nrow(na_subchunk) > 0) {
+        na_subchunk[ , c("n", "freq")] <- NA
+      }
+    }
+      
+    # apply the confidence interval.  Apply to NA's and unk separately depending on if selected. (If you try and apply CI's cart blanc to the NA/Unknowns it can error out on binding the columns)
+    if (length(ci.method) > 0) {
+      # subchunk <- dplyr::bind_cols(subchunk, binom::binom.confint(subchunk$x, subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
+      enum_subchunk <- dplyr::bind_cols(enum_subchunk, binom::binom.confint(enum_subchunk$x, enum_subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
+      if (unk == FALSE) {
+        unk_subchunk <- dplyr::bind_cols(unk_subchunk, data.frame(method=rep(NA, nrow(unk_subchunk)), lower=rep(NA, nrow(unk_subchunk)), upper=rep(NA, nrow(unk_subchunk))))
+      } else if (nrow(unk_subchunk >0)) {
+        unk_subchunk <- dplyr::bind_cols(unk_subchunk, binom::binom.confint(unk_subchunk$x, unk_subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
+      } else {
+        unk_subchunk <- data.frame()
+      }
+      if (!is.null(na)) {
+        if (na == FALSE) {
+          na_subchunk <- dplyr::bind_cols(na_subchunk, data.frame(method=rep(NA, nrow(na_subchunk)), lower=rep(NA, nrow(na_subchunk)), upper=rep(NA, nrow(na_subchunk))))
+        } else if (nrow(na_subchunk > 0)) {
+          na_subchunk <- dplyr::bind_cols(na_subchunk, binom::binom.confint(na_subchunk$x, na_subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
+        } else {
+          na_subchunk <- data.frame()
+        }
+      }
+    }
+    
+    # recombine the portions of the subchunk
+    subchunk <- rbind(enum_subchunk, na_subchunk, unk_subchunk)
+    
+    # add the 'by' column
+    subchunk <- cbind(rep(x, nrow(subchunk)), subchunk)
+    names(subchunk)[1] <- "by"
+
+    subchunk # return
+  }))
+  
+  # if there was no 'by', delete the 'by' column
+  if (by_type != "multinomial" && by_type != "single_column") {
+    chunk <- chunk[ , -1]
   }
   
   # if short names, only use the bit of the enum name after the last period
   if (short_names) {
-    chunk$enum <- str_match(chunk$enum, "[^.]+$")
+    chunk$enum <- stringr::str_match(chunk$enum, "[^.]+$")
+    if("by" %in% names(chunk)) {
+      chunk$by <- stringr::str_match(chunk$by, "[^.]+$")
+    }
   }
   
   if (round_freq>0) {
@@ -871,16 +1069,21 @@ getenumCI <- function(veris, enum, na = NULL, unk=FALSE, short_names=TRUE, ci.me
   }
   
   # reorder output
-  chunk <- chunk[order(-chunk$freq), ]
-
+  if ("by" %in% names(chunk)) {
+    chunk <- chunk[order(chunk$by, -chunk$freq), ] 
+  } else {
+    chunk <- chunk[order(-chunk$freq), ]
+  }
+    
   # replace row numbers
   rownames(chunk) <- seq(length=nrow(chunk))
+  
+  # somehow enum ends up as a 1-column matrix.  This messes with dplyr.  The below line fixes it. - gdb 081516
+  chunk$enum <- as.character(chunk$enum)
   
   # return
   chunk
 }
-
-
 
 #' Metadata for 2-digit NAICS industry classification
 #'
