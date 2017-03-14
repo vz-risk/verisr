@@ -423,7 +423,7 @@ geta4names <- function() {
                                  c('Confidentiality', 'Integrity', 'Availability'), 
                                  sep="."))
   assetmap <- c("S "="Server", "N "="Network", "U "="User Dev", "M "="Media", 
-                "P "="Person", "T "="Kiosk/Term", "Un"="Unknown")
+                "P "="Person", "T "="Kiosk/Term", "Un"="Unknown", "E"="Embedded")
   asset <- setNames(paste('asset.assets.variety', names(assetmap), sep='.'),
                     paste('asset.variety', assetmap, sep='.'))
   c(actor, action, asset, attribute)  
@@ -728,6 +728,11 @@ getenum2 <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
 #' @export
 getenumby <- function(...) {
   getenum(...)
+}
+
+#' @export
+getenum <- function(...) {
+  getenumCI(...)
 }
 
 #' Displays a useful description of a verisr object

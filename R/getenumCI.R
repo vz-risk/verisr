@@ -1,20 +1,35 @@
-#' Wrapper for getenumCI()
-#' 
-#' @param ... getenumCI() parameters.  At a minimum, 'veris' (verisr object)
-#'   and enum (string)
-#' @export
-getenum <- function(...) {
-  getenumCI(...)
-}
-
 #' Summarizes veris enumerations from verisr objects
 #' 
-#' From dbirR 9047
+#' This is the primary analysis function for veris.  It conducts binomial
+#'     hypothesistests on veris data to enumerate the frequency of a given 
+#'     enumeration or set of enumerations within a feature. (For example, 
+#'     'Malware', 'Hacking', etc within 'action').
+#'     
+#' The 'by' parameter allows enumerating one feature by another, (for example
+#'    to count the frequency of each action by year).
+#' 
+#' Unknowns are generally excluded as 'not tested'.  If 'NA' is an enumeration
+#'    in the feature being enumerated, it must be specified with the 'na.rm'
+#'    parameter as whether NA should be included or not is highly dependent on
+#'    the hypothesis being tested.
+#'    
+#' This function accurately enumerates single logical columns, character 
+#'     feature columns, and features spanning multiple logical columns (such as 
+#'     action.*).  It cannot enumerate free-form text columns.  It accurately 
+#'     calculates the sample size 'n' as the number of rows (independent of the
+#'     number of enumerations present in the feature).
+#'     
+#' GetenumCI() can also provide binomial confidence intervals for the 
+#'     enumerations tested within the features.  See the parameters for details.
+#'     
+#' While getenumCI() may work on other types of dataframes, it was designed for
+#'     verisr dataframes and data.tables.  It is not tested nor recommended for
+#'     any other type.
 #' 
 #' @param veris A verisr object
 #' @param enum A veris feature or enumeration to summarize
 #' @param by A veris feature or enumeration to group by
-#' @param na A boolean of whether to include not applicable in the sample set.
+#' @param na.rm A boolean of whether to include not applicable in the sample set.
 #'     This is REQUIRED if enum has a potential value of NA as there is no 
 #'     'default' method for handling NAs.  Instead, it depends on the 
 #'     hypothesis being tested.
@@ -30,6 +45,7 @@ getenum <- function(...) {
 #'     confidence interval. (default = 0.95)
 #' @param round.freq An integer indicating how many places to round
 #'     the frequency value to. (default = 5)
+#' @param na DEPRECIATED! Use 'na.rm' parameter.
 #' @param ... A catch all for functions using arguments from previous
 #'     versions of getenum.
 #' @return A data frame summarizing the enumeration
@@ -56,13 +72,21 @@ getenum <- function(...) {
 getenumCI <- function(veris, 
                       enum, 
                       by=NULL,
-                      na = NULL, 
+                      na.rm = NULL, 
                       unk=FALSE, 
                       short.names=TRUE, 
                       ci.method=c(), 
                       ci.level=0.95, 
                       round.freq=5, 
+                      na = NULL, 
                       ...) {
+  
+  # even though the parameter is 'na.rm', we still use 'na' internally.
+  if (!is.null(na.rm)) {
+    na = !na.rm  # if na.rm is set, change na to it. (na is the logical opposit of na.rm)
+  } else if (!is.null(na)) {
+    warning("'na' is depriciated.  please use 'na.rm'.")
+  }
   
   # legacy veris objects are data tables, however data tables cause problems.
   if (data.table::is.data.table(veris)) {
@@ -125,6 +149,9 @@ getenumCI <- function(veris,
       if (length(enum_enums) == 1) { # could be > 0, but this should help throw errors when not functioning properly. - gdb 090116
         if (is.logical(subdf[[enum_enums]])) {
           enum_type <- "logical"
+          short_names <- gsub('^.*[.]([^.]+$)', "\\1", names(subdf))
+          logical_enum <- enum_enums
+          enum_enums <- enum_enums <- grep(paste0("^", gsub('^(.*)[.]([^.]+$)', "\\1", logical_enum), "[.][A-Z0-9][^.]*$"), names(subdf), value=TRUE)
         } else {
           enum_type <- "single_column"
         }
@@ -134,14 +161,18 @@ getenumCI <- function(veris,
     }
     
     # This allows us to handle numerical/factor/character and logical enumerations
-    if (enum_type == "multinomial") {
+    if (enum_type == "multinomial" | enum_type == "logical") {
       subdf <- subdf[, enum_enums]
       
       if (ncol(subdf) <= 0) { stop(paste(c("No columns matched feature(s) ", enum, " using regex ", paste0("^",enum,"[.][A-Z0-9][^.]*$"), collapse=" ")))}
       
       # we remove unknowns because they should normally not be counted
       if (unk == FALSE) {
-        subdf_for_n <- subdf[, !grepl(".[U|u]nknown$", names(subdf))]
+        if (short.names) {
+          subdf_for_n <- subdf[, !grepl("^(.+[.]|)(U|[A-Za-z]{1,3} - [U|u])nknown$", names(subdf))] # if short names, bla - unknown is removed. See logical section for why. - GDB 17-01-30
+        } else {
+          subdf_for_n <- subdf[, !grepl("^(.+[.]|)(U|u)nknown$", names(subdf))] # if long names, bla - unknown is kept in sample. See logical section for why. - GDB 17-01-30
+        }
       } else {
         subdf_for_n <- subdf
       }
@@ -162,11 +193,11 @@ getenumCI <- function(veris,
       if (short.names) {
         short_names <- gsub('^.*[.]([^.]+$)', "\\1", names(subdf))
         subdf <- do.call(cbind, lapply(unique(short_names), function(y) { # bind the list of columns returned by lapply
-          dups <- grep(y, short_names)
+          dups <- grep(paste0("^(",y,")$"), short_names)
           if (length(dups) > 1) {
-            feature <- apply(subdf[ , grep(y, short_names)], MARGIN=1, any) # 'grep' selects columns with the name, apply checks if any of the row are true
+            feature <- apply(subdf[ , grep(paste0("^(",y,")$"), short_names)], MARGIN=1, any) # 'grep' selects columns with the name, apply checks if any of the row are true
           } else {
-            feature <- subdf[ , grep(y, short_names)]
+            feature <- subdf[ , grep(paste0("^(",y,")$"), short_names)]
           }
           feature <- data.frame(feature)
           names(feature) <- y
@@ -184,44 +215,52 @@ getenumCI <- function(veris,
       n <- sum(v, na.rm=TRUE)
       # remove unknowns
       if (unk == FALSE) {
-        n <- n - sum(v[grepl("^(.+[.]|)Unknown$", names(v))], na.rm=TRUE)
+        n <- n - sum(v[grepl("^(.+[.]|)(U|u)nknown$", names(v))], na.rm=TRUE) # Doesn't handle `Bla - unknown` as these bastardized hierarchies shouldn't be in a single character column. - gdb 17-01-30
       }
-
+      
       # remove NAs
       if (!is.null(na)) {
-        if (unk == FALSE) {
+        if (na == FALSE) {
           n <- n - sum(v[grepl("^(.+[.]|)NA$", names(v))], na.rm=TRUE)
         }
       }
       
-    } else if (enum_type == "logical") {
-      v <- c(sum(subdf[[enum_enums]], na.rm=TRUE))
-      names(v) <- enum_enums
-
-      # enum_feature <- stringr::str_match(enum_enums, "^(.+)\\.")[1]
-      # enum_feature <- unlist(regmatches(enum_enums, regexec("^(.+)\\.", enum_enums)))[1]
-      enum_feature <- gsub('^.*[.]([^.]+$)', "\\1", enum_enums)[1]
-      # need to remove where the enum is not true but the 'unknown' enumeration of the feature is.
-      if (unk == FALSE & paste0(enum_feature, "Unknown") %in% names(subdf)) {
-        subdf <- subdf[!(!subdf[[enum_enums]] & subdf[[paste0(enum_feature, "Unknown")]]), ]
-      }
-      # need to remove where the enum is not true but the 'na' enumeration of the feature is.
-      if (!is.null(na)) { 
-        if(na == FALSE & paste0(enum_feature, "NA") %in% names(subdf)) {
-          subdf <- subdf[!(!subdf[[enum_enums]] & subdf[[paste0(enum_feature, "NA")]]), ]
-        }
-      }
-      n <- nrow(subdf)
+      # I'm removing the logical column and grouping it in with the multinomial because multinomial is just lots of logical questions currently and this and it could give different results due to handling of 'unknown'. - GDB 170-01-30
+      #    } else if (enum_type == "logical") {
+      #      v <- c(sum(subdf[[enum_enums]], na.rm=TRUE))
+      #      names(v) <- enum_enums
+      #
+      #      # enum_feature <- stringr::str_match(enum_enums, "^(.+)\\.")[1]
+      #      # enum_feature <- unlist(regmatches(enum_enums, regexec("^(.+)\\.", enum_enums)))[1]
+      #      enum_feature <- gsub('^.*[.]([^.]+$)', "\\1", enum_enums)[1]
+      #      # need to remove where the enum is not true but the 'unknown' enumeration of the feature is.
+      #      if (unk == FALSE & paste0(enum_feature, "Unknown") %in% names(subdf)) {
+      #        subdf <- subdf[!(!subdf[[enum_enums]] & subdf[[paste0(enum_feature, "Unknown")]]), ]
+      #      }
+      #      # need to remove where the enum is not true but the 'na' enumeration of the feature is.
+      #      if (!is.null(na)) { 
+      #        if(na == FALSE & paste0(enum_feature, "NA") %in% names(subdf)) {
+      #          subdf <- subdf[!(!subdf[[enum_enums]] & subdf[[paste0(enum_feature, "NA")]]), ]
+      #        }
+      #      }
+      #      n <- nrow(subdf)
       
     } else {
       stop("class of 'enum' column(s) was not identified, preventing summarization.")
     }
     
     # create the chunk for this 'by'
-    subchunk <- data.frame(enum=names(v), x=v, n=rep(n, length(v)), freq=v/n)
-    enum_subchunk <- subchunk[!grepl("^(.+[.]|)Unknown$", subchunk$enum) & !grepl("^(.+[.]|)NA$", subchunk$enum), ]
-    unk_subchunk <- subchunk[grepl("^(.+[.]|)Unknown$", subchunk$enum), ]
-    na_subchunk <- subchunk[grepl("^(.+[.]|)NA$", subchunk$enum), ]
+    if (short.names) { # if short names, we treat `foo.Bar - unknown` as an unknown, similar to foo.bar.variety.Unknown being truncated to 'Unknown'
+      subchunk <- data.frame(enum=names(v), x=v, n=rep(n, length(v)), freq=v/n)
+      enum_subchunk <- subchunk[!grepl("^(.+[.]|)(U|[A-Za-z]{1,3} -  [U|u])nknown$", subchunk$enum) & !grepl("^(.+[.]|)NA$", subchunk$enum), ]
+      unk_subchunk <- subchunk[grepl("^(.+[.]|)(U|[A-Za-z]{1,3} - [U|u])nknown$", subchunk$enum), ]
+      na_subchunk <- subchunk[grepl("^(.+[.]|)NA$", subchunk$enum), ]
+    } else { # if long names, we include `foo.Bar - unknown` because we wouldn't truncate, and therefor would include, foo.bar.variety.Unknown
+      subchunk <- data.frame(enum=names(v), x=v, n=rep(n, length(v)), freq=v/n)
+      enum_subchunk <- subchunk[!grepl("^(.+[.]|)(U|u)nknown$", subchunk$enum) & !grepl("^(.+[.]|)NA$", subchunk$enum), ]
+      unk_subchunk <- subchunk[grepl("^(.+[.]|)(U|u)nknown$", subchunk$enum), ]
+      na_subchunk <- subchunk[grepl("^(.+[.]|)NA$", subchunk$enum), ]
+    }
     
     # n is not applicable for Unknown (and potentially na) rows so zero it out
     if (unk == FALSE & nrow(unk_subchunk) > 0) {
@@ -232,7 +271,7 @@ getenumCI <- function(veris,
         na_subchunk[ , c("n", "freq")] <- NA
       }
     }
-      
+    
     # apply the confidence interval.  Apply to NA's and unk separately depending on if selected. (If you try and apply CI's cart blanc to the NA/Unknowns it can error out on binding the columns)
     if (length(ci.method) > 0) {
       if (nrow(enum_subchunk) > 0) {
@@ -263,13 +302,23 @@ getenumCI <- function(veris,
       }
     }
     
+    # If logical (rather than multinomial), remove all rows other than the one logical
+    if (enum_type == "logical") {
+      if (short.names) {
+        logical_enum_end <- gsub('^(.*)[.]([^.]+$)', "\\2", logical_enum)
+        enum_subchunk <- enum_subchunk[enum_subchunk$enum == logical_enum_end, ]
+      } else {
+        enum_subchunk <- enum_subchunk[enum_subchunk$enum == logical_enum, ]
+      }
+    }
+    
     # recombine the portions of the subchunk
     subchunk <- rbind(enum_subchunk, na_subchunk, unk_subchunk)
     
     # add the 'by' column
     subchunk <- cbind(rep(x, nrow(subchunk)), subchunk)
     names(subchunk)[1] <- "by"
-
+    
     subchunk # return
   }))
   

@@ -37,3 +37,8 @@ Version 2.0.6:
 
 * json2veris would silently add columns not in the schema, it now produces a warning
 * postproc now replaces NA's in all logical columns with FALSE (related to above)
+
+Version 3.0.0.9003:
+
+* Added 'Embedded' to 'asset.variety' enumeration
+* updated getenumCI

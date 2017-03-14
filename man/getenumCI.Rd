@@ -4,9 +4,9 @@
 \alias{getenumCI}
 \title{Summarizes veris enumerations from verisr objects}
 \usage{
-getenumCI(veris, enum, by = NULL, na = NULL, unk = FALSE,
+getenumCI(veris, enum, by = NULL, na.rm = NULL, unk = FALSE,
   short.names = TRUE, ci.method = c(), ci.level = 0.95, round.freq = 5,
-  ...)
+  na = NULL, ...)
 }
 \arguments{
 \item{veris}{A verisr object}
@@ -15,7 +15,7 @@ getenumCI(veris, enum, by = NULL, na = NULL, unk = FALSE,
 
 \item{by}{A veris feature or enumeration to group by}
 
-\item{na}{A boolean of whether to include not applicable in the sample set.
+\item{na.rm}{A boolean of whether to include not applicable in the sample set.
 This is REQUIRED if enum has a potential value of NA as there is no 
 'default' method for handling NAs.  Instead, it depends on the 
 hypothesis being tested.}
@@ -37,6 +37,8 @@ confidence interval. (default = 0.95)}
 \item{round.freq}{An integer indicating how many places to round
 the frequency value to. (default = 5)}
 
+\item{na}{DEPRECIATED! Use 'na.rm' parameter.}
+
 \item{...}{A catch all for functions using arguments from previous
 versions of getenum.}
 }
@@ -44,7 +46,32 @@ versions of getenum.}
 A data frame summarizing the enumeration
 }
 \description{
-From dbirR 9047
+This is the primary analysis function for veris.  It conducts binomial
+    hypothesistests on veris data to enumerate the frequency of a given 
+    enumeration or set of enumerations within a feature. (For example, 
+    'Malware', 'Hacking', etc within 'action').
+    
+The 'by' parameter allows enumerating one feature by another, (for example
+   to count the frequency of each action by year).
+}
+\details{
+Unknowns are generally excluded as 'not tested'.  If 'NA' is an enumeration
+   in the feature being enumerated, it must be specified with the 'na.rm'
+   parameter as whether NA should be included or not is highly dependent on
+   the hypothesis being tested.
+   
+This function accurately enumerates single logical columns, character 
+    feature columns, and features spanning multiple logical columns (such as 
+    action.*).  It cannot enumerate free-form text columns.  It accurately 
+    calculates the sample size 'n' as the number of rows (independent of the
+    number of enumerations present in the feature).
+    
+GetenumCI() can also provide binomial confidence intervals for the 
+    enumerations tested within the features.  See the parameters for details.
+    
+While getenumCI() may work on other types of dataframes, it was designed for
+    verisr dataframes and data.tables.  It is not tested nor recommended for
+    any other type.
 }
 \examples{
 tmp <- tempfile(fileext = ".dat")
