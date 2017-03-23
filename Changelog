@@ -42,3 +42,8 @@ Version 3.0.0.9003:
 
 * Added 'Embedded' to 'asset.variety' enumeration
 * updated getenumCI
+
+Version 3.0.0.9004:
+
+* Added getenumSRC
+* updated getenumCI

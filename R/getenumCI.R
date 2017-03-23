@@ -252,7 +252,7 @@ getenumCI <- function(veris,
     # create the chunk for this 'by'
     if (short.names) { # if short names, we treat `foo.Bar - unknown` as an unknown, similar to foo.bar.variety.Unknown being truncated to 'Unknown'
       subchunk <- data.frame(enum=names(v), x=v, n=rep(n, length(v)), freq=v/n)
-      enum_subchunk <- subchunk[!grepl("^(.+[.]|)(U|[A-Za-z]{1,3} -  [U|u])nknown$", subchunk$enum) & !grepl("^(.+[.]|)NA$", subchunk$enum), ]
+      enum_subchunk <- subchunk[!grepl("^(.+[.]|)(U|[A-Za-z]{1,3} - [U|u])nknown$", subchunk$enum) & !grepl("^(.+[.]|)NA$", subchunk$enum), ]
       unk_subchunk <- subchunk[grepl("^(.+[.]|)(U|[A-Za-z]{1,3} - [U|u])nknown$", subchunk$enum), ]
       na_subchunk <- subchunk[grepl("^(.+[.]|)NA$", subchunk$enum), ]
     } else { # if long names, we include `foo.Bar - unknown` because we wouldn't truncate, and therefor would include, foo.bar.variety.Unknown
@@ -345,6 +345,10 @@ getenumCI <- function(veris,
   
   if (round.freq>0) {
     chunk$freq <- round(chunk$freq, round.freq)
+    if ("lower" %in% names(chunk)) {
+      chunk$lower <- round(chunk$lower, round.freq)
+      chunk$upper <- round(chunk$upper, round.freq)
+    }
   }
   
   # reorder output
