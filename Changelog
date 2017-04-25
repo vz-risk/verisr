@@ -1,3 +1,8 @@
+version 2.1:
+* updated verisr to work with veris 1.3.1.  Most changes are to json2veris for importing.
+* added getenumCI() as a replacement for getenum
+* added getenumSRC() as an experimental statistical enumeration tool
+
 verision 2.0:
 
 * added sample data "veris.sample", this will allow quick exploration and samples to function
