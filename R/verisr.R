@@ -52,9 +52,9 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   # if no schema, try to load it from github
   if (missing(schema)) {
     x <- getURL("https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json")
-    lschema <- fromJSON(json_str=x)
+    lschema <- rjson::fromJSON(json_str=x)
   } else {
-    lschema <- fromJSON(file=schema)
+    lschema <- rjson::fromJSON(file=schema)
   }  
   # create listing of files
   jfiles <- unlist(sapply(dir, list.files, pattern = "json$", full.names=T))
@@ -985,7 +985,7 @@ joinVeris <- function(veris) {
   if (length(veris) > 1) { # if you try and iterate over a zero-length, vector, it contain's 'NA' rather than not iterating
     for(n in names(veris)[2:length(veris)]) {
       if (is.null(nrow(veris[[n]])) || nrow(veris[[n]]) <= 1) {
-        df <- do.call(data.frame, joinVeris(veris[[n]]))
+        df <- do.call(data.frame, list(joinVeris(veris[[n]]), "check.names"=FALSE)) # check.names required. Otherwise spaces are replaced with periods.
         out[[n]] <- replicate(nrow(out), df, simplify=FALSE)
       } else {
         df2 <- joinVeris(veris[[n]])
@@ -1020,7 +1020,7 @@ fillVeris <- function(records, empty.row, filename = "not supplied") {
     lCols <- lapply(names(record[lapply(record, class) == "list"]), function(name) {
       fillVeris(record[[name]], empty.row=empty.row[, name][[1]], filename=filename)
     })
-    row[1, names(lCols)] <- lCols
+    if (length(lCols) > 1) row[1, names(lCols)] <- lCols # add list columns if there are any
     
     nonlCols <- names(record[lapply(record, class) != "list"])
     row[1, nonlCols] <- record[1, nonlCols]
