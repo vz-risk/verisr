@@ -1,3 +1,6 @@
+version 3.0.9000
+* initial working version attempting to add processing of VERIS 1.4 and above (requiring recursive verisr objects and associated tooling)
+
 version 2.1:
 * updated verisr to work with veris 1.3.1.  Most changes are to json2veris for importing.
 * added getenumCI() as a replacement for getenum
