@@ -81,7 +81,23 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   # }))
   # setnames(veris, names(vft))
   ### NEW
-  veris <- buildVeris(vft, numfil) # build recursive list to populate with data.
+  verisBuilt <- buildVeris(vft, numfil) # build recursive list to populate with data.
+  # verisFilled <- joinVeris(verisBuilt) # recursive join
+  # one-level join:
+  verisFilled <- as.data.frame(verisBuilt[[1]])
+  if (length(verisBuilt) > 1) { # if you try and iterate over a zero-length, vector, it contain's 'NA' rather than not iterating
+    for(n in names(verisBuilt)[2:length(verisBuilt)]) {
+      if (is.null(nrow(verisBuilt[[n]])) || nrow(verisBuilt[[n]]) <= 1) {
+        df <- do.call(data.frame, list(verisBuilt[[n]], "check.names"=FALSE, "stringsAsFactors"=FALSE)) # check.names required. Otherwise spaces are replaced with periods.
+        verisFilled[[n]] <- replicate(nrow(verisFilled), df, simplify=FALSE)
+      } else {
+        verisFilled[[n]] <- replicate(nrow(verisFilled), verisBuilt[[n]], simplify=FALSE)
+      }
+    }
+  }
+  veris <- verisFilled
+  rm(verisFilled)
+  
   ###
   
   # get a text progress bar going
@@ -968,7 +984,7 @@ buildVeris <- function(columns, nrow) {
   data.table::setnames(veris[[1]], names(non_list_columns))
   
   # recurse on list columns in columns
-  veris <- c(veris, lapply(columns[lapply(columns, class) == "list"], buildVeris, nrow=0))
+  veris <- c(veris, lapply(columns[lapply(columns, class) == "list"], buildVeris, nrow=1))
   
   # return
   veris
@@ -985,11 +1001,11 @@ joinVeris <- function(veris) {
   if (length(veris) > 1) { # if you try and iterate over a zero-length, vector, it contain's 'NA' rather than not iterating
     for(n in names(veris)[2:length(veris)]) {
       if (is.null(nrow(veris[[n]])) || nrow(veris[[n]]) <= 1) {
-        df <- do.call(data.frame, list(joinVeris(veris[[n]]), "check.names"=FALSE, stringAsFactors=FALSE)) # check.names required. Otherwise spaces are replaced with periods.
+        df <- do.call(data.frame, list(joinVeris(veris[[n]]), "check.names"=FALSE, "stringsAsFactors"=FALSE)) # check.names required. Otherwise spaces are replaced with periods.
         out[[n]] <- replicate(nrow(out), df, simplify=FALSE)
       } else {
-        df <- joinVeris(veris[[n]])
-        out[[n]] <- replicate(nrow(out), df, simplify=FALSE)
+        df2 <- joinVeris(veris[[n]])
+        out[[n]] <- replicate(nrow(out), df2, simplify=FALSE)
       }
     }
   }
@@ -1000,30 +1016,62 @@ joinVeris <- function(veris) {
 
 #' Recursively fill the data table list structure from buildVeris()
 #' 
-#' @param veris list of the form produced by buildVeris()
-#' @param row integer. The row to edit
-#' @param record list. The incident as interpreted by nameveris()
-#' @param vtype list. The schema as interpreted by parseProps()
+#' NOTE: list columns in empty list columns are not created as it
+#'     would require that the intermediate list column have 
+#'     data frames which would then have at least one row to contain
+#'     the second empty list column.  This would potentially create
+#'     extra samples.
+#'     
+#'     That said, the sample is the record itself which exists and
+#'     so it may not matter for sample and in fact be better to have
+#'     the all list columns contain data frames with a ddefault row
+#'     down to the depth of the schema.  This would ensure that all
+#'     endpoints of the schema exist in the record, potentially 
+#'     making parsing easier. (Without it, the enumeration function
+#'     will need to specifically catch lists that do not recurse to
+#'     the depth of the schema.) (This may not actually be a 
+#'     practical immediate problem as the only embedded lists of 
+#'     lists are under 'sequence' which must exist.)
+#'     
+#'     Ultimately, how lists of objects are enumerated will decide
+#'     the best approach.  (I.e. accurately counting assets of a 
+#'     given type, for example 'People', under multiple sequence 
+#'     steps per record across multiple records.)
+#' 
+#' @param records list. The incident as interpreted by nameveris()
+#' @param veris.built list outputted by buildVeris.  This is used as
+#'     a template for the record.
 #' @param filename character. record file name. Used for debug text.
 #' @return list of data tables of the structure from buidlVeris()
-fillVeris <- function(records, empty.row, filename = "not supplied") {
+fillVeris <- function(records, veris.built, filename = "not supplied") {
   # we're going to iterate over the records (primarily during recursion), so if records is a single record, we need to put it in a list.
   if ("incident_id" %in% names(records)) records <- list(records)
   
   ret <- do.call(rbind, lapply(records, function(record) {
-    row <- empty.row
-    nomatch <- !(names(record) %in% colnames(empty.row))
+    row <- as.data.frame(veris.built[[1]])[1, ]
+    if (length(veris.built) > 1) {
+      for (name in names(veris.built[2:length(veris.built)])) {
+        # row[[name]] <- replicate(nrow(row), data.frame(), simplify=FALSE) # if row can be more than 1 long
+        row[[name]] <- list(data.frame())
+      }
+    }
+    nomatch <- !(names(record) %in% c(colnames(veris.built[[1]]), names(veris.built)[2:length(veris.built)]))
     if (any(nomatch)) {
       warning(paste0("Column[s]: \n", paste0("  \"", names(record)[nomatch], "\"", collpase=", "), 
                      "\nNot found in schema, source file:", filename))
     }
-    lCols <- lapply(names(record[lapply(record, class) == "list"]), function(name) {
-      fillVeris(record[[name]], empty.row=empty.row[, name][[1]], filename=filename)
+    lColsNames <- names(record[lapply(record, class) == "list"])
+    lCols <- lapply(lColsNames, function(name) {
+      list(fillVeris(record[[name]], veris.built=veris.built[[name]], filename=filename))
     })
-    if (length(lCols) > 1) row[1, names(lCols)] <- lCols # add list columns if there are any
+    if(length(lCols) >= 1) row[1, lColsNames] <- lCols # add list columns if there are any
     
     nonlCols <- names(record[lapply(record, class) != "list"])
-    row[1, nonlCols] <- record[1, nonlCols]
+    
+    row[1, nonlCols] <- data.frame(record, check.names=FALSE, stringsAsFactors=FALSE)[1, nonlCols]
+    
+    #return
+    row[1, ]
   }))
   
   #return  
