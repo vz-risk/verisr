@@ -968,7 +968,7 @@ buildVeris <- function(columns, nrow) {
   data.table::setnames(veris[[1]], names(non_list_columns))
   
   # recurse on list columns in columns
-  veris <- c(veris, lapply(columns[lapply(columns, class) == "list"], buildVeris, nrow=nrow))
+  veris <- c(veris, lapply(columns[lapply(columns, class) == "list"], buildVeris, nrow=0))
   
   # return
   veris
@@ -985,11 +985,11 @@ joinVeris <- function(veris) {
   if (length(veris) > 1) { # if you try and iterate over a zero-length, vector, it contain's 'NA' rather than not iterating
     for(n in names(veris)[2:length(veris)]) {
       if (is.null(nrow(veris[[n]])) || nrow(veris[[n]]) <= 1) {
-        df <- do.call(data.frame, list(joinVeris(veris[[n]]), "check.names"=FALSE)) # check.names required. Otherwise spaces are replaced with periods.
+        df <- do.call(data.frame, list(joinVeris(veris[[n]]), "check.names"=FALSE, stringAsFactors=FALSE)) # check.names required. Otherwise spaces are replaced with periods.
         out[[n]] <- replicate(nrow(out), df, simplify=FALSE)
       } else {
-        df2 <- joinVeris(veris[[n]])
-        out[[n]] <- replicate(nrow(out, df2), simplify=FALSE)
+        df <- joinVeris(veris[[n]])
+        out[[n]] <- replicate(nrow(out), df, simplify=FALSE)
       }
     }
   }
