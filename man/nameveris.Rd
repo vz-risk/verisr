@@ -19,4 +19,3 @@ return a simple list object where each element is named with
 the field name and the value is the value read in, or True if the
 field is an enumeration.
 }
-

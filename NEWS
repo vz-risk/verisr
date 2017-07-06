@@ -1,0 +1,8 @@
+3.0.9002
+* working to fix issue with empty properties objects in schema not showing up in data (i.e. the discovery_method.unknown problem)
+* added discovery_method convenience columns.
+
+3.0.9001
+* Updated json2veris to read VERIS v2.0 json
+* Not yet tested
+* Significant performance issues expected

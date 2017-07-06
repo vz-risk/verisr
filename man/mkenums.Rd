@@ -4,7 +4,7 @@
 \alias{mkenums}
 \title{Create a raw list of all column names expected from JSON schema.}
 \usage{
-mkenums(schema, cur = "", outvec = NULL)
+mkenums(schema, cur = "", outvec = list())
 }
 \arguments{
 \item{schema}{the merged veris schema in json}
@@ -18,4 +18,3 @@ Given a json schema for VERIS, this function will return a vector
 of columns names to be set in the verisr object.
 }
 \keyword{json}
-

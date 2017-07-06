@@ -19,4 +19,3 @@ simplebar(enumdf, title = NULL, solidfill = "steelblue", ...)
 given an enumeration data table and title, will plot a simple
 bar chart, returning the ggplot object.
 }
-

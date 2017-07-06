@@ -4,7 +4,7 @@
 \alias{parseProps}
 \title{Map VERIS fields to data type.}
 \usage{
-parseProps(schema, cur = "", outvec = NULL)
+parseProps(schema, cur = "", outvec = list())
 }
 \arguments{
 \item{schema}{the merged veris schema in json}
@@ -18,4 +18,3 @@ Given a json schema for VERIS, this function will return a named vector
 where the name is the field and the value is the R mode string or "enum".
 }
 \keyword{json}
-

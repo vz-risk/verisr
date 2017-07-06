@@ -30,9 +30,6 @@
 #' @param schema a full veris schema with enumerations included.
 #' @param progressbar a logical value to show (or not show) a progress bar
 #' @keywords json
-#' @import rjson
-#' @import data.table
-#' @import RCurl
 #' @export
 #' @examples
 #' \dontrun{
@@ -51,7 +48,7 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   savetime <- proc.time()
   # if no schema, try to load it from github
   if (missing(schema)) {
-    x <- getURL("https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json")
+    x <- RCurl::getURL("https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json")
     lschema <- rjson::fromJSON(json_str=x)
   } else {
     lschema <- rjson::fromJSON(file=schema)
@@ -134,7 +131,15 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
     #   
     # }
     ### NEW
-    veris <- fillVeris(veris, i, nfield, vtype, jfiles[i])
+    tt <- tryCatch(veris[i, ] <- fillVeris(nfield, verisBuilt, jfiles[i]),
+                   error=function(e) e, warning=function(w) w)
+    if(is(tt,"warning")) {
+      # cat(paste0("Warning found trying to set ", i, ", \"", x, "\" for \"", nfield[[x]], "\"\n"))
+      # cat("  length of assignment:", length(nfield[[x]]), "\n")
+      # cat("  in", i, jfiles[i], "\n")
+      print(tt)
+      cat("\n")
+    }
     ###
     if (!is.null(pb)) setTxtProgressBar(pb, i)
   }
@@ -145,12 +150,9 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   #  Instead, need to standardize NAs in veris.
   # colnames(veris) <- gsub('Not Applicable', 'NA', colnames(veris), ignore.case=TRUE) # this causes more problems than it solves. 17-01-17 GDB
 
-  veris <- post.proc(veris)
+  # veris <- post.proc(veris) # TODO: ADD BACK IN AND UPDATE APPROPRIATELY
 
-  # TODO: NEED TO Join the list of DT down to a data frame
-  join_dataframe
-  
-  veris <- as.data.frame(veris) # convert data.table to data.frame because data tables are evil. - 17-01-17
+  # veris <- as.data.frame(veris) # convert data.table to data.frame because data tables are evil. - 17-01-17. It's now outputting a dataframe. 17-06-23
   class(veris) <- c("verisr", class(veris))
   if(progressbar) {
     print(proc.time() - savetime)
@@ -167,41 +169,100 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
 #' 
 #' @param veris the verisr object
 post.proc <- function(veris) {
+
+  ### OLD
+  # orgsize
+  # small <- c("victim.employee_count.1 to 10", "victim.employee_count.11 to 100", 
+  #            "victim.employee_count.101 to 1000", "victim.employee_count.Small")
+  # large <- c("victim.employee_count.1001 to 10000", "victim.employee_count.10001 to 25000", 
+  #            "victim.employee_count.25001 to 50000", "victim.employee_count.50001 to 100000", 
+  #            "victim.employee_count.Over 100000", "victim.employee_count.Large")
+  # veris[ , victim.orgsize.Small := rowSums(veris[ ,small, with=F]) > 0]
+  # veris[ , victim.orgsize.Large := rowSums(veris[ ,large, with=F]) > 0]
+
+  # # victim.industry
+  # ind2 <- substring(unlist(veris[ ,"victim.industry", with=F], use.names=F), 1L, 2L)
+  # # want an enumeration now, instead of a single list.
+  # # But Kevin wants both so he is uncommenting the line that Jay commented
+  # veris[ , victim.industry2 := ind2]
+  # for(x in unique(ind2)) {
+  #   iname <- paste0('victim.industry2.', x)
+  #   veris[ ,iname:=(ind2==x), with=F]
+  # }
+  ## industry3 may require more prep work since dashes are allowed.
+  # veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
+  #                                               use.names=F), 1L, 3L)]
+
+  # # victim.industry.name
+  # data(industry2, envir = environment())
+  # veris$victim.industry.name <- sapply(veris$victim.industry2, function(x) {
+  #   ifelse(x %in% industry2$code, industry2$shorter[which(industry2$code==x)], "Unknown")
+  # })
+  
+  # # actor.partner.industry
+  # veris[ , actor.partner.industry2 := substring(unlist(veris[ ,"actor.partner.industry", with=F], 
+  #                                               use.names=F), 1L, 2L)]
+  # veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
+  #                                               use.names=F), 1L, 3L)]
+  #
+  # veris <- cbind(veris, getpattern(veris))
+  #
+  ### NEW
+  data(industry2, envir = environment())
+  
+  # unnest sequence dataframes to make modification easier
+  df <- veris %>%
+    dplyr::select(sequence) %>%
+    dplyr::mutate(rowname = 1:n()) %>%
+    tidyr::unnest()
+  
   # orgsize
   small <- c("victim.employee_count.1 to 10", "victim.employee_count.11 to 100", 
              "victim.employee_count.101 to 1000", "victim.employee_count.Small")
   large <- c("victim.employee_count.1001 to 10000", "victim.employee_count.10001 to 25000", 
              "victim.employee_count.25001 to 50000", "victim.employee_count.50001 to 100000", 
              "victim.employee_count.Over 100000", "victim.employee_count.Large")
-  veris[ , victim.orgsize.Small := rowSums(veris[ ,small, with=F]) > 0]
-  veris[ , victim.orgsize.Large := rowSums(veris[ ,large, with=F]) > 0]
+  df[["victim.orgsize.Small"]] <- rowSums(df[ , small]) > 0
+  df[["victim.orgsize.Large"]] <- rowSums(df[ , large]) > 0
+  
   # victim.industry
-  ind2 <- substring(unlist(veris[ ,"victim.industry", with=F], use.names=F), 1L, 2L)
-  # want an enumeration now, instead of a single list.
-  # But Kevin wants both so he is uncommenting the line that Jay commented
-  veris[ , victim.industry2 := ind2]
-  for(x in unique(ind2)) {
-    iname <- paste0('victim.industry2.', x)
-    veris[ ,iname:=(ind2==x), with=F]
+  sequence.names <- c(names(df), paste("victim.industry2", c(industry2$code, "00"), sep="."))
+  df <- cbind(df, data.frame(matrix(data=FALSE, nrow=nrow(df), ncol=length(industry2$code)+1)))
+  names(df) <- sequence.names
+  for (ind2 in c(setdiff(industry2$code, c("31_33", "44_45", "48_49")), "00")) {
+    df[grepl(paste0("^", ind2), df$victim.industry), paste0("victim.industry2.", ind2)] <- TRUE
   }
+  df[grepl("^3[1-3]", df$victim.industry), "victim.industry2.31_33"] <- TRUE
+  df[grepl("^4[4-5]", df$victim.industry), "victim.industry2.44_45"] <- TRUE
+  df[grepl("^4[8-9]", df$victim.industry), "victim.industry2.48_49"] <- TRUE
+  
   ## industry3 may require more prep work since dashes are allowed.
-  veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
-                                                use.names=F), 1L, 3L)]
-
+  df[["victim.industry3"]] <- substring(df[["victim.industry"]], 1, 3)
+  
   # victim.industry.name
-  data(industry2, envir = environment())
-  veris$victim.industry.name <- sapply(veris$victim.industry2, function(x) {
-    ifelse(x %in% industry2$code, industry2$shorter[which(industry2$code==x)], "Unknown")
-  })
+  ind2.tmp <- industry2[, c("code", "shorter")]
+  names(ind2.tmp) <- c("extra.code", "victim.industry.name")
+  df[["extra.code"]] <- substr(df[["victim.industry"]], 1, 2)
+  df <- merge(df, ind2.tmp, by="extra.code")
+  df <- df[, "extra.code" != names(df)]
   
   # actor.partner.industry
-  veris[ , actor.partner.industry2 := substring(unlist(veris[ ,"actor.partner.industry", with=F], 
-                                                use.names=F), 1L, 2L)]
-  veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
-                                                use.names=F), 1L, 3L)]
-  veris <- cbind(veris, getpattern(veris))
+  df[["actor.partner.industry2"]] <- substring(df[["actor.partner.industry"]], 1, 2)
+  
+  veris <- cbind(veris, getpattern(df))
+  
+  # renest sequence and store back in veris
+  df <- df %>%
+    dplyr::group_by(rowname) %>%
+    tidyr::nest(.key = "sequence") %>%
+    dplyr::arrange(rowname)
+  veris[["sequence"]] <- df[["sequence"]]
+  ###
+  
   print("veris dimensions")
   print(dim(veris))
+  
+  
   fails <- sapply(colnames(veris), function(x) is.logical(veris[[x]]) & any(is.na(veris[[x]])))
   print(which(fails))
   if (any(fails)) {
@@ -212,6 +273,87 @@ post.proc <- function(veris) {
   fails <- sapply(colnames(veris), function(x) is.logical(veris[[x]]) & any(is.na(veris[[x]])))
   print(which(fails))
   veris
+}
+
+#' Determine the patterns from the 2014 Verizon DBIR
+#' 
+#' given a verisr object, this will determine which pattern the 
+#' incident is in (or "Other" if no pattern is matched). Note the 
+#' returned vector will be a factor with ordered levels for 
+#' arranging the patterns in an order.
+#' 
+#' @param sequence the unnested sequence column from a verisr object
+#' @param rowname string identifying column uniquely identifying rows
+#'     Defaults to 'rowname'
+#' @export
+#' @examples
+#' data(veris.sample, package="verisr")
+#' 
+#' # produces a vector with 1-to-1 mapping to verisr object
+#' pat <- getpattern(veris.sample)
+#' 
+#' # can summarize the results
+#' table(pat)
+getpattern <- function(sequence) {
+  action <- df[, grepl("action[.][A-Z]", names(df)) | grepl("action[.].*[.]variety[.]", names(df)) | grepl(rowname, names(df))] %>%
+    dplyr::group_by_(rowname) %>%
+    dplyr::summarize_all(function(c) {sum(c) > 0}) %>%
+    dplyr::arrange_(rowname) %>%
+    dplyr::ungroup()
+  actor <- df[, c('actor.external.motive.Espionage', 'actor.external.variety.State-affiliated', rowname)] %>%
+    dplyr::group_by_(rowname) %>%
+    dplyr::summarize_all(function(c) {sum(c) > 0}) %>%
+    dplyr::arrange_(rowname) %>%
+    dplyr::ungroup()
+  # TODO: ASSET compression
+  
+  skimmer <- sequence[['action.physical.variety.Skimmer']] |
+    (sequence[['action.physical.variety.Tampering']] & veris[['attribute.confidentiality.data.variety.Payment']])
+  espionage <- (sequence[['actor.external.motive.Espionage']] | 
+                  sequence[['actor.external.variety.State-affiliated']])
+  
+  pos <- (sequence[['asset.assets.variety.S - POS controller']] |
+            sequence[['asset.assets.variety.U - POS terminal']])
+  dos <- sequence[['action.hacking.variety.DoS']]
+  webapp <- sequence[['action.hacking.vector.Web application']]
+  webapp <- webapp & !(webapp & dos)
+  misuse <- sequence[['action.Misuse']]
+  
+  vfilter <- skimmer | espionage | pos | dos | webapp | misuse  
+  mal.tmp <- sequence[['action.Malware']] & 
+    !sequence[['action.malware.vector.Direct install']]
+  malware <- (mal.tmp & !vfilter)
+  theftloss <- sequence[['action.error.variety.Loss']] | 
+    sequence[['action.physical.variety.Theft']]
+  vfilter <- vfilter | malware | theftloss
+  errors <- veris[['action.Error']] & !vfilter
+  vfilter <- vfilter | errors
+  other <- !vfilter
+  pats <- data.frame(pos, webapp, misuse, theftloss, errors, malware,
+                     skimmer, dos, espionage, other)
+  
+  patcols  <- c("Point of Sale",
+                "Web Applications",
+                "Privilege Misuse",
+                "Lost and Stolen Assets",
+                "Miscellaneous Errors",
+                "Crimeware",
+                "Payment Card Skimmers",
+                "Denial of Service",
+                "Cyber-Espionage",
+                "Everything Else")
+  colnames(pats) <- patcols  
+  # convert T/F to colname if True
+  named.df <- do.call(cbind, lapply(colnames(pats), function(x) {
+    ifelse(pats[ ,x], x, NA)
+  }))
+  # now reduce each row to a single label, return the vector
+  retval <- apply(named.df, 1, function(x) {
+    x[!is.na(x)][1]
+  })
+  colnames(pats) <- paste0("pattern.", patcols)
+  retval <- factor(retval, levels=patcols, ordered=T)  
+  cbind(data.table(pattern=retval), pats)
 }
 
 #' Map VERIS fields to data type.
@@ -257,9 +399,13 @@ parseProps <- function(schema, cur="", outvec=list()) {
       outvec <- setNames(outvec, vnames)
     }
   } else {
-    for(x in names(schema)) {
-      newcur <- ifelse(nchar(cur), paste(cur, x, sep='.'), x)
-      outvec <- parseProps(schema[[x]], newcur, outvec)
+    if (length(names(schema)) > 0) {  # this is the normal case
+      for(x in names(schema)) {
+        newcur <- ifelse(nchar(cur), paste(cur, x, sep='.'), x)
+        outvec <- parseProps(schema[[x]], newcur, outvec)
+      }
+    } else { # in some cases, a feature may be an object with no properties. without this catch, the column won't be created.  E.g. sequence$discovery_method.unknown - GDB 170626
+      outvec[[cur]] <- "logical"
     }
   }
   outvec
@@ -305,6 +451,7 @@ veriscol <- function(schema, a4) {
   rawfields <- rawfields[clean]
   
   # Moved from getverisdf to obviate it
+  # Fill in convenience columns
   sequence <- rawfields[['sequence']]
   vnames <- c(names(sequence), names(a4))
   sequence <- c(sequence, rep("logical", length(a4)))
@@ -432,7 +579,7 @@ nameveris.recurs <- function(json, vtype, cur=NULL, outlist=list()) {
   #   looped variety object (sequence, asset.assets, data variety, etc)
   #   a value itself
   
-  # if named values, loop through each of the children and recurse to myself
+  # if named values, loop through each of the children and recurse to myself  
   if (length(names(json))>0) { # names >0: json is an object, not a list, so recurse
     
     for(x in names(json)) {
@@ -445,7 +592,7 @@ nameveris.recurs <- function(json, vtype, cur=NULL, outlist=list()) {
       }
     }
     
-  } else { # no names nad length > 0 or 
+  } else { # no names and length > 0 or 
     if (cur %in% names(vtype)) {
       if (vtype[cur] == "enum") {
         for(x in json) {
@@ -519,316 +666,164 @@ geta4names <- function() {
   #                  paste('asset.variety', assetmap, sep='.'))
   asset <- convenience(paste('asset.assets', 
                               c('Server', 'Network', 'User Dev', 'Media', 
-                                'Person', 'Public Terminal', 'Embedded', 'Unknown'), 
-                              sep="."))  
-  c(actor, action, asset, attribute)  
+                                'Person', 'Public Terminal', 'Embedded', 'Unknown', 'Other'), 
+                              sep="."))
+  discovery <- convenience(paste('discovery_method', 
+                                 c('Internal', 'External', 'Partner', 'Other', 'Unknown'), 
+                                 sep="."))
+  c(actor, action, asset, attribute, discovery)  
 }
 
 
-counto <- function(olist) {
-  cnm <- names(olist)
-  found.enum <- unlist(lapply(c('action', 'actor', 'attribute'), function(x) {
-    paste(x, unique(getnth(cnm[grep(paste0("^", x), cnm)])), sep=".")
+#' recursively build a data structure to store for the veris record
+#' 
+#' This recursively builds a list of the form 
+#' list(DT, name1=list(), name2=list(), etc) where name is the name
+#' of a column which will be a list of data frames and list() is
+#' the same recursive structure, starting with a DT.
+#' 
+#' @param columns list. The output of veriscol listing columns & 
+#' types.  Likely 'vft'
+#' @param nrow integer. The number of rows to create (likely 'numfil'
+#' or 'length(jfiles)')
+#' @return a list of data tables and lists to fill
+buildVeris <- function(columns, nrow) {
+  veris <- list()
+  
+  # for non-list columns, create a data table with columns of the correct type and store it in the first item of the output list
+  non_list_columns <- columns[lapply(columns, class) != "list"] # added to speed up next block by preventing repeated subsetting
+  veris[[1]] <- data.table::as.data.table(lapply(seq_along(non_list_columns), function(i) {
+    if (non_list_columns[i]=="character") rep(NA_character_, nrow)
+    else if (non_list_columns[i]=="logical") rep(FALSE, nrow) # The 'FALSE' will be counted even if a row is not imported while an NA will not.  Unfortunately 'FALSE' is not filled in at any point and unfilled rows should end up filtered anyway so leaving 'FALSE' rather than 'NA'. - gdb 170621
+    else if (non_list_columns[i]=="integer") rep(NA_real_, nrow)
+    else if (non_list_columns[i]=="double") rep(NA_real_, nrow)
+    else warning(paste0("Column ", names(columns[i]), " of class ", columns[i], " not included!") )
   }))
-  for(x in found.enum) {
-    olist[[x]] <- TRUE
-  }
-  assetmap <- c("S "="Server", "N "="Network", "U "="User Dev", "M "="Media", 
-                "P "="Person", "T "="Kiosk/Term", "Un"="Unknown")
-  outs <- cnm[grep('^asset.assets.variety', cnm)]
-  if (length(outs) > 0) {
-    found.enum <- paste('asset.assets', assetmap[substr(getlast(outs), 1,2)], sep=".")
-    for(x in found.enum) {
-      olist[[x]] <- TRUE
+  data.table::setnames(veris[[1]], names(non_list_columns))
+  
+  # recurse on list columns in columns
+  veris <- c(veris, lapply(columns[lapply(columns, class) == "list"], buildVeris, nrow=1))
+  
+  # return
+  veris
+}
+
+#' Join the list of data tables from buildVeris into a data frame
+#' 
+#' This effectively produces the recursive veris data structure
+#' 
+#' @param veris list of data tables in buildVeris structure
+#' @return data frame. Data frame with list columns
+joinVeris <- function(veris) {
+  out <- as.data.frame(veris[[1]])
+  if (length(veris) > 1) { # if you try and iterate over a zero-length, vector, it contain's 'NA' rather than not iterating
+    for(n in names(veris)[2:length(veris)]) {
+      if (is.null(nrow(veris[[n]])) || nrow(veris[[n]]) <= 1) {
+        df <- do.call(data.frame, list(joinVeris(veris[[n]]), "check.names"=FALSE, "stringsAsFactors"=FALSE)) # check.names required. Otherwise spaces are replaced with periods.
+        out[[n]] <- replicate(nrow(out), df, simplify=FALSE)
+      } else {
+        df2 <- joinVeris(veris[[n]])
+        out[[n]] <- replicate(nrow(out), df2, simplify=FALSE)
+      }
     }
-  }
-  # TODO : need to add more fields for convenience things like:
-  # victim.industry2
-  # victim.industry3
-  # victim.orgsize, (Small/Large)
-  # victim.region
-  # victim.subregion
-  olist
-}
-
-#' Get the last element from a column name
-#' 
-#' Givn a vector with one or more column names (veris fields), this will
-#' return the last string in the name, as it is seperated by [.].
-#' 
-#' @param nm the vector of column names
-getlast <- function(nm) {
-  sapply(nm, function(x) {
-    temp <- unlist(strsplit(x, '[.]'))
-    temp[length(temp)]
-  })
-}
-
-#' Get the last element from a column name, include action
-#' 
-#' Givn a vector with one or more column names (veris fields), this will
-#' return the last string in the name, as it is seperated by [.].  It will
-#' also assume this is the action and attempt to map nice names to the name.
-#' 
-#' @param nm the vector of column names
-getlastaction <- function(nm) {
-  fixlabel <- c("malware"="[Mal]", "hacking"="[Hack]", "social"="[Soc]",
-                "error"="[Err]", "physical"="[Phys]", "misuse"="[Mis]",
-                "environmental"="[Env]", "unknown"="[Unk]")
-  sapply(nm, function(x) {
-    temp <- unlist(strsplit(x, '[.]'))
-    paste(temp[length(temp)], fixlabel[temp[2]])
-  })
-}
-
-#' Get the nth element from a column name
-#' 
-#' Givn a vector with one or more column names (veris fields), this will
-#' return the nth string in the name, as it is seperated by [.].
-#' 
-#' @param nm the vector of column names
-#' @param which the nth vlue to return
-getnth <- function(nm, which=2) {
-  sapply(nm, function(x) {
-    temp <- unlist(strsplit(x, '[.]'))
-    temp[2]
-  })
-}
-
-#' Get a data.frame of counts from an enumeration
-#'
-#' When exploring VERIS data, you may want to get a simple count of the values within a value or enumeration.  
-#' Given one or more enumerations, this will return the subsequent underlying logical values in an ordered data frame.
-#' 
-#' Note there are some special values that can be set as the enumeration, 
-#' that may not be obvious. :
-#' * actor, action, attribute: will all return the next level down.  For example, just querying for "action" will return "malware", "hacking", and so on.
-#' * action.variety: will return the variety enumerations across all actions (e.g. top N actions) (not in getenumby() yet)
-#' * asset.variety: will return the type of assets, "Server", "Network, "User Dev" and so on
-#' * victim.industry2: will return a short label of industries based on 2 values of NAICS code.
-#' * victim.industry3: will return a short label of industries based on 3 values of NAICS code.
-#' * pattern: will return the pattern the incidents are in.
-#'
-#' Change in 1.1: the "add.n" and "add.freq" options are now TRUE by default.
-#' 
-#' @param veris a verisr object
-#' @param enum the field to count
-#' @param filter limit what records are searched (optional)
-#' @param add.n include a total count of variables found (denominator)
-#' @param add.freq include a percentage (x/n)
-#' @examples
-#' \dontrun{
-#' hacking <- getenum(veris, "action.hacking.variety")
-#' external <- getenum(veris, "actor.external.motive")
-#' }
-getenum.single <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
-  if (is.null(filter)) {
-    filter <- rep(T, nrow(veris))
-  } else if (length(filter) != nrow(veris)) {
-    warning(paste0("filter is not same length (", length(filter),
-                   ") as object (", nrow(veris), ")."))
-    return(NULL)
   }
   
-  # get names from the veris object
-  cnames <- colnames(veris)
-  # extract by the enumeration
-  # if field name exists as is, return it, else search.
-  if(any(grepl(paste0('^', enum, "$"), cnames))) {
-    # yes it exists
-    if(is.logical(veris[[enum]])) {
-      warning(paste0("single logical field requested: ", enum, ", skipping..."))  
-    } else { # not a logical field, assuming factor
-      out.table <- table(veris[[enum]])
-      outdf <- data.frame(enum=names(out.table), x=as.vector(out.table))
-      if (add.n) outdf$n <- sum(!is.na(veris[[enum]]))
-      if (add.freq) outdf$freq <- outdf$x/outdf$n
-      if (is.ordered(veris[[enum]])) {
-        outdf$enum <- factor(outdf$enum, levels=levels(veris[[enum]]), ordered=T)
-      } else {
-        outdf$enum <- factor(outdf$enum, levels=outdf$enum, ordered=T)
-      }
-    }
-  } else {
-    # only match where there are one level of enumerations 
-    # after the requested enum
-    if(enum=="action.variety") {
-      gkey <- paste0("^action.*.variety")
-      thisn <- cnames[grep(gkey, cnames)]
-      ret <- setNames(colSums(veris[filter ,thisn, with=F]), getlastaction(thisn))
-      # TODO add "Action.variety" into getenumby()
-    } else {
-      gkey <- paste0("^", enum, ".[^.]+$")
-      thisn <- cnames[grep(gkey, cnames)]
-      colmodes <- sapply(thisn, function(x) is.logical(veris[[x]]) | is.numeric(veris[[x]]))
-      if(!all(colmodes)) {
-        warning(paste0("non-numeric/non-logical values requested: ", enum, ". Perhaps the enum is incorrect?"))
-        return(data.frame())
-      }
-      ret <- setNames(colSums(veris[filter ,thisn, with=F]), getlast(thisn))
-    }
-    ret <- ret[ret>0]
-    outdf <- data.table(enum=names(ret), x=ret)
-    #outdf <- data.frame(enum=names(ret), x=ret)
-    n <- sum(rowSums(veris[filter ,thisn, with=F]) > 0)
-    if (n==0) return(data.frame())
-    if (add.n) outdf$n <- n
-    if (add.freq) outdf$freq <- outdf$x/n
-    outdf <- outdf[order(rank(x), enum)]
-    if (enum %in% c('actor', 'action', 'asset.variety', 'attribute')) {
-      a4names <- names(geta4names())
-      n.order <- getlast(a4names[grep(paste0('^', enum), a4names)])
-      outdf$enum <- factor(outdf$enum, levels=rev(n.order), ordered=T)
-    } else {
-      outdf$enum <- factor(outdf$enum, levels=outdf$enum, ordered=T)
-    }
-  }
-  outdf
+  # return
+  out
 }
 
-#' Extract counts from one or more enumerations
-#'
-#' When exploring VERIS data, you may want to get a simple count of the values within a value or enumeration.  
-#' Given one or more enumerations, this will return the subsequent underlying logical values in an ordered data frame.  
-#' The data frame should be formatted for use in \code{ggplot2} graphics.
+#' Recursively fill the data table list structure from buildVeris()
 #' 
-#' As of version 1.1: the \code{enum} variable may be a vector of one or more enumerations.  
-#' This enables any number of dimensions to be specified.  This makes the \code{primary} and \code{secondary}
-#' obsolete but are still supported for the time being.
+#' NOTE: list columns in empty list columns are not created as it
+#'     would require that the intermediate list column have 
+#'     data frames which would then have at least one row to contain
+#'     the second empty list column.  This would potentially create
+#'     extra samples.
+#'     
+#'     That said, the sample is the record itself which exists and
+#'     so it may not matter for sample and in fact be better to have
+#'     the all list columns contain data frames with a ddefault row
+#'     down to the depth of the schema.  This would ensure that all
+#'     endpoints of the schema exist in the record, potentially 
+#'     making parsing easier. (Without it, the enumeration function
+#'     will need to specifically catch lists that do not recurse to
+#'     the depth of the schema.) (This may not actually be a 
+#'     practical immediate problem as the only embedded lists of 
+#'     lists are under 'sequence' which must exist.)
+#'     
+#'     Ultimately, how lists of objects are enumerated will decide
+#'     the best approach.  (I.e. accurately counting assets of a 
+#'     given type, for example 'People', under multiple sequence 
+#'     steps per record across multiple records.)
 #' 
-#' Note there are some special values that can be set as the enumeration, 
-#' that may not be obvious. :
-#' * actor, action, attribute: will all return the next level down.  For example, just querying for "action" will return "malware", "hacking", and so on.
-#' * action.variety: will return the variety enumerations across all actions (e.g. top N actions) (not in getenumby() yet)
-#' * asset.variety: will return the type of assets, "Server", "Network, "User Dev" and so on
-#' * victim.industry2: will return a short label of industries based on 2 values of NAICS code.
-#' * victim.industry3: will return a short label of industries based on 3 values of NAICS code.
-#' * pattern: will return the pattern the incidents are in.
-#'
-#' Change in 1.1: the "add.n" and "add.freq" options are now TRUE by default.
-#' #' @aliases getenumby
-#' @param veris a verisr object
-#' @param enum the main enumeration field 
-#' @param primary the primary enumeration to filter on
-#' @param secondary the (optional) secondary enumeration to filter on
-#' @param filter limit what records are searched (optional)
-#' @param add.n include a total count of variables found (denominator)
-#' @param add.freq include a percentage (x/n)
-#' @param fillzero fill in missing matches with zeros
-#' @param exclusive logical value, If true, will count the unknown value only if it exclusive and it will not count the Unknown if it is selected with other attributes in the enumeration.
-#' @export
-#' @import data.table
-#' @examples
-#' \dontrun{
-#' # old method:
-#' a2 <- getenum(veris, "action", primary="asset.variety")
-#' # new method:
-#' a4 <- getenum(veris, c("action", "asset.variety", "actor", "attribute"))
-#' }
-getenum2 <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL, 
-                      add.n=T, add.freq=T, fillzero=T, exclusive=F) {
-    if (missing(filter)) {
-    filter <- rep(T, nrow(veris))
-  } else if (length(filter) != nrow(veris)) {
-    warning(paste0("filter is not same length (", length(filter),
-                   ") as object (", nrow(veris), ")."))
-    return(NULL)
-  }
-  cnames <- colnames(veris)
-  enum <- c(enum, primary, secondary)
-  if (length(enum)>1 & exclusive) {
-    warning("Cannot retrieve multiple enumerations and have exclusive set to TRUE, ignoring exclusive argument.")
-    exclusive <- FALSE
-  }
-  if(any(enum %in% c("asset.assets"))) {
-    # message("getenumby(): as of version 1.1, asset.assets should be replaced by asset.variety")
-    enum[which(enum %in% c("asset.assets"))] <- "asset.variety"
-  }
-  fullkey <- paste0('^', enum, "$")
-  fulln <- sapply(fullkey, function(x) any(grepl(x, cnames)))
-  if (length(enum)==1 & all(fulln)) {
-    if(is.logical(veris[[enum]])) {
-      warning(paste0("single logical field requested: ", enum, ", skipping..."))
-      return(data.frame())
-    } else { # not a logical field, assuming factor
-      out.table <- table(veris[[enum]])
-      if(!length(out.table)) {
-        return(data.frame())
+#' @param records list. The incident as interpreted by nameveris()
+#' @param veris.built list outputted by buildVeris.  This is used as
+#'     a template for the record.
+#' @param filename character. record file name. Used for debug text.
+#' @param level character. The column currently being filled.
+#'     defaults to 'root'.
+#' @return list of data tables of the structure from buidlVeris()
+fillVeris <- function(records, veris.built, filename = "not supplied", level="root") {
+  # we're going to iterate over the records (primarily during recursion), so if records is a single record, we need to put it in a list.
+  if ("incident_id" %in% names(records)) records <- list(records)
+  
+  ret <- lapply(records, function(record) {
+    row <- as.data.frame(veris.built[[1]][1, ])
+    if (length(veris.built) > 1) {
+      for (name in names(veris.built[2:length(veris.built)])) {
+        # row[[name]] <- replicate(nrow(row), data.frame(), simplify=FALSE) # if row can be more than 1 long
+        row[[name]] <- list(data.frame())
       }
-      outdf <- data.frame(enum=names(out.table), x=as.vector(out.table))
-      if (add.n) outdf$n <- sum(!is.na(veris[[enum]]))
-      if (add.freq) outdf$freq <- outdf$x/outdf$n
-      if (is.ordered(veris[[enum]])) {
-        outdf$enum <- factor(outdf$enum, levels=levels(veris[[enum]]), ordered=T)
-      } else {
-        outdf$enum <- factor(outdf$enum, levels=outdf$enum, ordered=T)
-      }
-    }
-  } else {
-    gkey <- paste0("^", enum, ".[^.]+$")
-    savethisn <- thisn <- lapply(gkey, function(x) cnames[grep(x, cnames)])
-    allfound <- sapply(thisn, function(x) length(x)>0)
-    if(!all(allfound)) {
-      warning(paste0("getenumby(): No columns matched \"", enum[!allfound], "\"", collapse="\", \""))
-      return(data.frame())
     }
     
-    thisn$x <- 0
-    outdf <- as.data.table(expand.grid(thisn))
-    #outdf <- as.data.frame(expand.grid(thisn))
-    cnm <- colnames(outdf)[1:(ncol(outdf)-1)]
-    # just look in first enum (exclusive) for unknowns
-    myunks <- unique(unlist(sapply(c("Unknown", " - Other", "unknown"), function(p) grep(p, thisn[[1]])), use.names=F))
-    for(i in seq(nrow(outdf))) {
-      this.comp <- as.character(unlist(outdf[i, cnm, with = F]))
-      count <- rowSums(veris[filter, this.comp, with=F]) == length(enum)
-      if (exclusive && i %in% myunks) {
-        count <- sum(count & rowSums(veris[filter, thisn[[1]], with=F])==1)
-      } else {
-        count <- sum(count)
+    ### Extra convoluted no match checking to handle things like matching action.unknown to action.Unknown. 
+    ###    The backward approach to lowering names is to avoid messing upper-casing of a single character internal to the string.
+    # We need caps names first so they are the value. lower case will be the names since we need them as a reference
+    schema_names <- c(colnames(veris.built[[1]]), names(veris.built)[2:length(veris.built)])
+    # check for names in record not in the schema
+    nomatch <- !(names(record) %in% schema_names)
+    # if everything matches, we can skip the shinanigans
+    if (any(nomatch)) { 
+      # fill vector with lower case names.  We'll need the cross-match later
+      names(schema_names) <- lapply(schema_names, tolower)
+      # Are any of the non-matching columns convenience columns?
+      convenience_match <- (names(record) %in% names(schema_names)) & nomatch
+      nomatch <- !(names(record) %in% names(schema_names)) & nomatch
+      # If any where convenience columns, fill them in with the convenience column name (so action.unknown -> action.Unknown) and set TRUE
+      if (any(convenience_match)) {
+        record <- record[!convenience_match] # remove the lower case convenience columns with no corresponding content.
       }
-      outdf[i, x:=count]
+      # if any no matches still exist, alert on them.
+      if (any(nomatch)) {
+        warning(paste0("Column[s]: \n", paste0("  \"", names(record)[nomatch], "\"", collpase=", "), 
+                       "\nNot found in schema column ", level, ".  Source file:", filename, "\n"))
+      }
     }
-    for(column in cnm) {
-      tempcol <- getlast(as.character(unlist(outdf[ , column, with=F])))
-      outdf[ , column:=tempcol, with=F]
+    
+    lColsNames <- names(record[lapply(record, class) == "list"])
+    lCols <- lapply(lColsNames, function(name) {
+      list(fillVeris(record[[name]], veris.built=veris.built[[name]], filename=filename, level=name))
+    })
+    if(length(lCols) >= 1) row[1, lColsNames] <- lCols # add list columns if there are any
+    
+    nonlCols <- names(record[lapply(record, class) != "list"])
+    
+    if (!is.null(nonlCols)) {
+      row[1, nonlCols] <- data.frame(record[nonlCols], check.names=FALSE, stringsAsFactors=FALSE)[1, ]
+      # TODO: Need to check if any non-logical columns are length > 1 and, if so, collapse them with a comma
     }
-    extra.names <- NULL
-    if (length(enum)>1) extra.names <- paste0('enum', seq((length(enum)-1)))
-    setnames(outdf, c('enum', extra.names, 'x'))
-    n <- sum(rowSums(veris[filter ,unlist(savethisn), with=F], na.rm=T) > 0, na.rm=T)
-    if (n==0) return(data.frame())
-    if (!fillzero) {
-      outdf <- outdf[outdf$x>0,]
-    }
-    if (add.n) outdf$n <- n
-    if (add.freq) outdf$freq <- outdf$x/n
-    # how about we put some order to the chaos
-    a4names <- names(geta4names())
-    for(i in seq_along(enum)) {
-      if (enum[i] %in% c('actor', 'action', 'asset.variety', 'attribute')) {
-        n.order <- getlast(a4names[grep(paste0('^', enum[i]), a4names)])
-        this.col <- colnames(outdf)[i]
-        outdf[[this.col]] <- factor(outdf[[this.col]], levels=rev(n.order), ordered=T)
-      }    
-    }
-  }
-  # name the columns... enum enum1 enum2 (?)
-  # print(outdf)
-  #outdf <- outdf[order(-rank(x), enum)]
-  #outdf$enum <- factor(outdf$enum, levels=outdf$enum, ordered=T)
-  outdf
+    
+    #return
+    row[1, ]
+  })
+  
+  # join rows
+  ret <- do.call(rbind.data.frame, ret)
+  
+  #return  
+  ret
 }
 
-#' @export
-getenumby <- function(...) {
-  getenum(...)
-}
-
-#' @export
-getenum <- function(...) {
-  getenumCI(...)
-}
 
 #' Displays a useful description of a verisr object
 #' 
@@ -955,125 +950,3 @@ NULL
 #' save(veris.sample, file="data/veris.sample.rda", compress="xz")
 #' }
 NULL
-
-
-#' recursively build a data structure to store for the veris record
-#' 
-#' This recursively builds a list of the form 
-#' list(DT, name1=list(), name2=list(), etc) where name is the name
-#' of a column which will be a list of data frames and list() is
-#' the same recursive structure, starting with a DT.
-#' 
-#' @param columns list. The output of veriscol listing columns & 
-#' types.  Likely 'vft'
-#' @param nrow integer. The number of rows to create (likely 'numfil'
-#' or 'length(jfiles)')
-#' @return a list of data tables and lists to fill
-buildVeris <- function(columns, nrow) {
-  veris <- list()
-  
-  # for non-list columns, create a data table with columns of the correct type and store it in the first item of the output list
-  non_list_columns <- columns[lapply(columns, class) != "list"] # added to speed up next block by preventing repeated subsetting
-  veris[[1]] <- data.table::as.data.table(lapply(seq_along(non_list_columns), function(i) {
-    if (non_list_columns[i]=="character") rep(NA_character_, nrow)
-    else if (non_list_columns[i]=="logical") rep(FALSE, nrow) # The 'FALSE' will be counted even if a row is not imported while an NA will not.  Unfortunately 'FALSE' is not filled in at any point and unfilled rows should end up filtered anyway so leaving 'FALSE' rather than 'NA'. - gdb 170621
-    else if (non_list_columns[i]=="integer") rep(NA_real_, nrow)
-    else if (non_list_columns[i]=="double") rep(NA_real_, nrow)
-    else warning(paste0("Column ", names(columns[i]), " of class ", columns[i], " not included!") )
-  }))
-  data.table::setnames(veris[[1]], names(non_list_columns))
-  
-  # recurse on list columns in columns
-  veris <- c(veris, lapply(columns[lapply(columns, class) == "list"], buildVeris, nrow=1))
-  
-  # return
-  veris
-}
-
-#' Join the list of data tables from buildVeris into a data frame
-#' 
-#' This effectively produces the recursive veris data structure
-#' 
-#' @param veris list of data tables in buildVeris structure
-#' @return data frame. Data frame with list columns
-joinVeris <- function(veris) {
-  out <- as.data.frame(veris[[1]])
-  if (length(veris) > 1) { # if you try and iterate over a zero-length, vector, it contain's 'NA' rather than not iterating
-    for(n in names(veris)[2:length(veris)]) {
-      if (is.null(nrow(veris[[n]])) || nrow(veris[[n]]) <= 1) {
-        df <- do.call(data.frame, list(joinVeris(veris[[n]]), "check.names"=FALSE, "stringsAsFactors"=FALSE)) # check.names required. Otherwise spaces are replaced with periods.
-        out[[n]] <- replicate(nrow(out), df, simplify=FALSE)
-      } else {
-        df2 <- joinVeris(veris[[n]])
-        out[[n]] <- replicate(nrow(out), df2, simplify=FALSE)
-      }
-    }
-  }
-  
-  # return
-  out
-}
-
-#' Recursively fill the data table list structure from buildVeris()
-#' 
-#' NOTE: list columns in empty list columns are not created as it
-#'     would require that the intermediate list column have 
-#'     data frames which would then have at least one row to contain
-#'     the second empty list column.  This would potentially create
-#'     extra samples.
-#'     
-#'     That said, the sample is the record itself which exists and
-#'     so it may not matter for sample and in fact be better to have
-#'     the all list columns contain data frames with a ddefault row
-#'     down to the depth of the schema.  This would ensure that all
-#'     endpoints of the schema exist in the record, potentially 
-#'     making parsing easier. (Without it, the enumeration function
-#'     will need to specifically catch lists that do not recurse to
-#'     the depth of the schema.) (This may not actually be a 
-#'     practical immediate problem as the only embedded lists of 
-#'     lists are under 'sequence' which must exist.)
-#'     
-#'     Ultimately, how lists of objects are enumerated will decide
-#'     the best approach.  (I.e. accurately counting assets of a 
-#'     given type, for example 'People', under multiple sequence 
-#'     steps per record across multiple records.)
-#' 
-#' @param records list. The incident as interpreted by nameveris()
-#' @param veris.built list outputted by buildVeris.  This is used as
-#'     a template for the record.
-#' @param filename character. record file name. Used for debug text.
-#' @return list of data tables of the structure from buidlVeris()
-fillVeris <- function(records, veris.built, filename = "not supplied") {
-  # we're going to iterate over the records (primarily during recursion), so if records is a single record, we need to put it in a list.
-  if ("incident_id" %in% names(records)) records <- list(records)
-  
-  ret <- do.call(rbind, lapply(records, function(record) {
-    row <- as.data.frame(veris.built[[1]])[1, ]
-    if (length(veris.built) > 1) {
-      for (name in names(veris.built[2:length(veris.built)])) {
-        # row[[name]] <- replicate(nrow(row), data.frame(), simplify=FALSE) # if row can be more than 1 long
-        row[[name]] <- list(data.frame())
-      }
-    }
-    nomatch <- !(names(record) %in% c(colnames(veris.built[[1]]), names(veris.built)[2:length(veris.built)]))
-    if (any(nomatch)) {
-      warning(paste0("Column[s]: \n", paste0("  \"", names(record)[nomatch], "\"", collpase=", "), 
-                     "\nNot found in schema, source file:", filename))
-    }
-    lColsNames <- names(record[lapply(record, class) == "list"])
-    lCols <- lapply(lColsNames, function(name) {
-      list(fillVeris(record[[name]], veris.built=veris.built[[name]], filename=filename))
-    })
-    if(length(lCols) >= 1) row[1, lColsNames] <- lCols # add list columns if there are any
-    
-    nonlCols <- names(record[lapply(record, class) != "list"])
-    
-    row[1, nonlCols] <- data.frame(record, check.names=FALSE, stringsAsFactors=FALSE)[1, nonlCols]
-    
-    #return
-    row[1, ]
-  }))
-  
-  #return  
-  ret
-}

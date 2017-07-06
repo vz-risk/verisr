@@ -4,7 +4,7 @@
 \alias{veriscol}
 \title{Create a list of all column names expected from JSON schema.}
 \usage{
-veriscol(schema)
+veriscol(schema, a4)
 }
 \arguments{
 \item{schema}{the merged veris schema in json}
@@ -16,4 +16,3 @@ around mkenums() which is a recursive function.  This will clean up
 some of the one-off things we do after reading the schema.
 }
 \keyword{json}
-

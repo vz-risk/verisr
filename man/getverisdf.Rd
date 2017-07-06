@@ -16,6 +16,14 @@ Given the schema object, will identify each column type to be
 created into a data.table.
 }
 \details{
+WARNING: getverisdf is dead code.  All functionality has been 
+  moved to veriscol. It only added the typing of enums and a4 
+  columns.  mkenums has been rewritten to just output the needed 
+  typing since it's only used here through veriscol.  a4 was 
+  moved to veriscol since mkenums is recursive.  getverisdf added 
+  an unnecessary level of abstraction (and a second recursive 
+  parse through the schema in the call to 'parseProps' and so has 
+  been removed from usage.) - gdb 170619
+
 TODO: need to add the convenience fields in here.
 }
-
