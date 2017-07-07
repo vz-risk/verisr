@@ -47,6 +47,21 @@ flatten <- function(veris, level=NULL, row.name="extra.rowname") {
       })
     )
   )
+  
+  # Need to do the stupid trick with asset.assets and data.variety (amount -> variety.amount).
+  if (('amount' %in% names(df)) & (any(grepl("variety.", names(df))))) {
+    df.names <- c(names(df), paste0("amount.", gsub("^variety[.](.*)$", "\\1", names(df[, grep("^variety", names(df), value=T)]))))
+    df <- cbind(df, as.data.frame(matrix(data=NA_real_, nrow = nrow(df), ncol=length(df.names)-ncol(df))))
+    names(df) <- df.names
+    varieties <- grepl("^variety", names(df))
+    #varieties <- names(df[, grep("^variety", names(df), value=T)])[apply(df[, grep("^variety",names(df), value=T)], MARGIN=1, which)]
+    #varieties <- paste0("amount.", gsub("^variety[.](.*)$", "\\1", variety))
+    for (i in which(!is.na(df[["amount"]]))) {
+      variety <- names(df[varieties])[which(as.logical(df[i, varieties]))[1]]
+      variety <- paste0("amount.", gsub("^variety[.](.*)$", "\\1", variety))
+      df[i, variety] <- df[i, "amount"]
+    }
+  }
 
   if (!is.null(level)) {  # not the top and more than 1 so flatten
     ret <- df %>%
@@ -77,11 +92,10 @@ flatten <- function(veris, level=NULL, row.name="extra.rowname") {
       df[df$extra.rowname %in% single_rows, ],
       ret
     )
+    
     # set the names
     names(df) <- paste(level, names(df), sep=".")
   }
-  
-  #TODO: Need to do the stupid trick with asset.assets and data.variety (amount -> variety.amount)
   
   df
 }
