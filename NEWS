@@ -1,3 +1,7 @@
+3.0.9003
+* flatten() mostly working
+* fixed two issues in json2veris
+
 3.0.9002
 * working to fix issue with empty properties objects in schema not showing up in data (i.e. the discovery_method.unknown problem)
 * added discovery_method convenience columns.

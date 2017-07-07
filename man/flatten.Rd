@@ -4,7 +4,7 @@
 \alias{flatten}
 \title{Convert a hierarchical verisr object to a flattened verisr object}
 \usage{
-flatten(veris, level = NULL)
+flatten(veris, level = NULL, row.name = "extra.rowname")
 }
 \arguments{
 \item{veris}{The verisr object to flatten}
