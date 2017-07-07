@@ -45,6 +45,10 @@
 #'                     schema="~/veris/verisc-local.json")
 #' }
 json2veris <- function(dir=".", schema=NULL, progressbar=F) {
+  debug <- FALSE
+  if (debug) {
+    warning("DEBUG ENABLED.")
+  }
   savetime <- proc.time()
   # if no schema, try to load it from github
   if (missing(schema)) {
@@ -101,8 +105,12 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   pb <- NULL
   if (progressbar) pb <- txtProgressBar(min = 0, max = length(jfiles), style = 3)
   # in each file, pull out the values and fill in the data table
+  if (debug) {
+    jfiles <- jfiles[7000:length(jfiles)] # DEBUG
+  }
+  failures <- rep(TRUE, length(numfil))
   for(i in seq_along(jfiles)) {
-    json <- fromJSON(file=jfiles[i], method='C')
+    json <- rjson::fromJSON(file=jfiles[i], method='C')
     nfield <- nameveris(json, a4, vtype)
     
     if (length(nfield)==0) warning(paste("empty json file parsed from", jfiles[i]))
@@ -131,19 +139,27 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
     #   
     # }
     ### NEW
-    tt <- tryCatch(veris[i, ] <- fillVeris(nfield, verisBuilt, jfiles[i]),
-                   error=function(e) e, warning=function(w) w)
-    if(is(tt,"warning")) {
-      # cat(paste0("Warning found trying to set ", i, ", \"", x, "\" for \"", nfield[[x]], "\"\n"))
-      # cat("  length of assignment:", length(nfield[[x]]), "\n")
-      # cat("  in", i, jfiles[i], "\n")
-      print(tt)
-      cat("\n")
+    if (debug) {
+      veris[i, ] <- fillVeris(nfield, verisBuilt, jfiles[i]) # DEBUG
+    } else {
+      tt <- tryCatch(veris[i, ] <- fillVeris(nfield, verisBuilt, jfiles[i]), # MAIN PATH
+                     error=function(e) e, warning=function(w) w)
+      if(is(tt,"error")) {
+        warning(paste0("Error importing file ", jfiles[i], ".  It will be skipped."))
+        failures[i] <- FALSE
+      } else if(is(tt,"warning")) {
+        # cat(paste0("Warning found trying to set ", i, ", \"", x, "\" for \"", nfield[[x]], "\"\n"))
+        # cat("  length of assignment:", length(nfield[[x]]), "\n")
+        # cat("  in", i, jfiles[i], "\n")
+        print(tt)
+        cat("\n")
+      }
     }
     ###
     if (!is.null(pb)) setTxtProgressBar(pb, i)
   }
   if (!is.null(pb)) close(pb)
+  veris <- veris[failures, ] # if there were any errors, remove those records.
   
   # Not Applicable is replaced with NA for consistency
   # WARNING: the below line causes duplicates and overwrites legitimate 'Not Applicable' enumerations (such as plus.attack_difficulty_initial) so removing
@@ -788,7 +804,7 @@ fillVeris <- function(records, veris.built, filename = "not supplied", level="ro
       names(schema_names) <- lapply(schema_names, tolower)
       # Are any of the non-matching columns convenience columns?
       convenience_match <- (names(record) %in% names(schema_names)) & nomatch
-      nomatch <- !(names(record) %in% names(schema_names)) & nomatch
+      nomatch <- !convenience_match & nomatch
       # If any where convenience columns, fill them in with the convenience column name (so action.unknown -> action.Unknown) and set TRUE
       if (any(convenience_match)) {
         record <- record[!convenience_match] # remove the lower case convenience columns with no corresponding content.
@@ -809,8 +825,14 @@ fillVeris <- function(records, veris.built, filename = "not supplied", level="ro
     nonlCols <- names(record[lapply(record, class) != "list"])
     
     if (!is.null(nonlCols)) {
+      # some strings can have multiple values 
+      if (any(unlist(lapply(record[nonlCols], length))>1)) {
+        record[nonlCols] <- lapply(record[nonlCols], function(feature) {
+          ifelse(length(feature) > 1, paste(feature, sep=","), feature)
+        })
+      }
+      # the setdiff... is to prevent trying to write data to non-matching columns.
       row[1, nonlCols] <- data.frame(record[nonlCols], check.names=FALSE, stringsAsFactors=FALSE)[1, ]
-      # TODO: Need to check if any non-logical columns are length > 1 and, if so, collapse them with a comma
     }
     
     #return
