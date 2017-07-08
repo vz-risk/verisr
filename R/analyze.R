@@ -4,6 +4,7 @@
 #' 
 #' @param veris The verisr object to flatten
 #' @param level Used during recursion
+#' @param row.name Column to indicate unique rows in parent dataframe
 #' @return flattened verisr object
 #' @export
 flatten <- function(veris, level=NULL, row.name="extra.rowname") {
@@ -11,15 +12,15 @@ flatten <- function(veris, level=NULL, row.name="extra.rowname") {
     c(
       veris[ , lapply(veris, class) != 'list'], # columns that don't need parsing
       lapply(names(veris)[lapply(veris, class) == 'list'], function(n) { # each of the list columns
-        # turn the column vector into a dataframe of the colums plus a 'extra.rowname' column with row numbers to be used to join with the original DF
-        df.l <- dplyr::bind_rows(veris[[n]], .id="extra.rowname")
-        df.l[["extra.rowname"]] <- as.integer(df.l[["extra.rowname"]])
+        # turn the column vector into a dataframe of the colums plus a 'row.name' column with row numbers to be used to join with the original DF
+        df.l <- dplyr::bind_rows(veris[[n]], .id=row.name)
+        df.l[[row.name]] <- as.integer(df.l[[row.name]])
         if (nrow(df.l) == 0) { # if there's nothing in the list, just return a column of NAs.
           setNames(data.frame(rep(NA, nrow(veris))), ifelse(is.null(level), n, paste(level, n, sep=".")))
         } else {
           # recurse
-          df.l <- flatten(df.l, level=n)
-          rowname_child <- paste(n, "extra.rowname", sep=".")
+          df.l <- flatten(df.l, level=n, row.name=row.name)
+          rowname_child <- paste(n, row.name, sep=".")
           ret <- as.data.frame(
             lapply(df.l, function(c) {
               if (class(c)=="logical") rep(FALSE, nrow(veris)) # The 'FALSE' will be counted even if a row is not imported while an NA will not.  Unfortunately 'FALSE' is not filled in at any point and unfilled rows should end up filtered anyway so leaving 'FALSE' rather than 'NA'. - gdb 170621
@@ -31,7 +32,7 @@ flatten <- function(veris, level=NULL, row.name="extra.rowname") {
               else warning(paste0("Column ", names(c), " of class ", class(c), " not included!") )
             }), stringsAsFactors = FALSE)
           names(ret) <- names(df.l)
-          # WARNING: There could be multiple 'extra.rowname' in this so need to be specific about it for this level.
+          # WARNING: There could be multiple 'row.namee' in this so need to be specific about it for this level.
           ret[ , rowname_child] <- 1:nrow(veris)
           # join on rowname.
           # TODO: Probably just join.
@@ -65,7 +66,7 @@ flatten <- function(veris, level=NULL, row.name="extra.rowname") {
 
   if (!is.null(level)) {  # not the top and more than 1 so flatten
     ret <- df %>%
-      dplyr::group_by(extra.rowname) %>%
+      dplyr::group_by_(row.name) %>%
       # find rows in the parent level, that have multiple rows at this level
       dplyr::filter(n() > 1) %>%
       # compress down each column based on it's class
@@ -85,11 +86,11 @@ flatten <- function(veris, level=NULL, row.name="extra.rowname") {
         }
       }) %>%
       # ungroup to be safe
-      dplyr::ungroup(extra.rowname)
+      dplyr::ungroup(row.name)
     # join the columns with more than 1 row with those with 1 or less rows
-    single_rows <- as.integer(names(table(df$extra.rowname))[table(df$extra.rowname) <= 1])
+    single_rows <- as.integer(names(table(df[[row.name]]))[table(df[[row.name]]) <= 1])
     df <- rbind(
-      df[df$extra.rowname %in% single_rows, ],
+      df[df[[row.name]] %in% single_rows, ],
       ret
     )
     

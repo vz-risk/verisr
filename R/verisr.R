@@ -166,7 +166,7 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   #  Instead, need to standardize NAs in veris.
   # colnames(veris) <- gsub('Not Applicable', 'NA', colnames(veris), ignore.case=TRUE) # this causes more problems than it solves. 17-01-17 GDB
 
-  # veris <- post.proc(veris) # TODO: ADD BACK IN AND UPDATE APPROPRIATELY
+  veris <- post.proc(veris) # TODO: ADD BACK IN AND UPDATE APPROPRIATELY
 
   # veris <- as.data.frame(veris) # convert data.table to data.frame because data tables are evil. - 17-01-17. It's now outputting a dataframe. 17-06-23
   class(veris) <- c("verisr", class(veris))
@@ -265,7 +265,7 @@ post.proc <- function(veris) {
   # actor.partner.industry
   df[["actor.partner.industry2"]] <- substring(df[["actor.partner.industry"]], 1, 2)
   
-  veris <- cbind(veris, getpattern(df))
+  veris <- cbind(veris, getpattern(df, rowname="rowname"))
   
   # renest sequence and store back in veris
   df <- df %>%
@@ -300,7 +300,7 @@ post.proc <- function(veris) {
 #' 
 #' @param sequence the unnested sequence column from a verisr object
 #' @param rowname string identifying column uniquely identifying rows
-#'     Defaults to 'rowname'
+#'     Defaults to 'extra.rowname'
 #' @export
 #' @examples
 #' data(veris.sample, package="verisr")
@@ -310,39 +310,29 @@ post.proc <- function(veris) {
 #' 
 #' # can summarize the results
 #' table(pat)
-getpattern <- function(sequence) {
-  action <- df[, grepl("action[.][A-Z]", names(df)) | grepl("action[.].*[.]variety[.]", names(df)) | grepl(rowname, names(df))] %>%
-    dplyr::group_by_(rowname) %>%
-    dplyr::summarize_all(function(c) {sum(c) > 0}) %>%
-    dplyr::arrange_(rowname) %>%
-    dplyr::ungroup()
-  actor <- df[, c('actor.external.motive.Espionage', 'actor.external.variety.State-affiliated', rowname)] %>%
-    dplyr::group_by_(rowname) %>%
-    dplyr::summarize_all(function(c) {sum(c) > 0}) %>%
-    dplyr::arrange_(rowname) %>%
-    dplyr::ungroup()
-  # TODO: ASSET compression
+getpattern <- function(sequence, rowname="extra.rowname") {
+  sequence.flat <- verisr::flatten(sequence, level = "sequence", row.name=rowname)
   
-  skimmer <- sequence[['action.physical.variety.Skimmer']] |
-    (sequence[['action.physical.variety.Tampering']] & veris[['attribute.confidentiality.data.variety.Payment']])
-  espionage <- (sequence[['actor.external.motive.Espionage']] | 
-                  sequence[['actor.external.variety.State-affiliated']])
+  skimmer <- sequence.flat[['sequence.action.physical.variety.Skimmer']] |
+    (sequence.flat[['sequence.action.physical.variety.Tampering']] & sequence.flat[['sequence.attribute.confidentiality.data.variety.Payment']])
+  espionage <- (sequence.flat[['sequence.actor.external.motive.Espionage']] | 
+                  sequence.flat[['sequence.actor.external.variety.State-affiliated']])
   
-  pos <- (sequence[['asset.assets.variety.S - POS controller']] |
-            sequence[['asset.assets.variety.U - POS terminal']])
-  dos <- sequence[['action.hacking.variety.DoS']]
-  webapp <- sequence[['action.hacking.vector.Web application']]
+  pos <- (sequence.flat[['sequence.asset.assets.server.variety.POS controller']] |
+            sequence.flat[['sequence.asset.assets.user device.variety.POS terminal']])
+  dos <- sequence.flat[['sequence.action.hacking.variety.DoS']]
+  webapp <- sequence.flat[['sequence.action.hacking.vector.Web application']]
   webapp <- webapp & !(webapp & dos)
-  misuse <- sequence[['action.Misuse']]
+  misuse <- sequence.flat[['sequence.action.Misuse']]
   
   vfilter <- skimmer | espionage | pos | dos | webapp | misuse  
-  mal.tmp <- sequence[['action.Malware']] & 
-    !sequence[['action.malware.vector.Direct install']]
+  mal.tmp <- sequence.flat[['sequence.action.Malware']] & 
+    !sequence.flat[['sequence.action.malware.vector.Direct install']]
   malware <- (mal.tmp & !vfilter)
-  theftloss <- sequence[['action.error.variety.Loss']] | 
-    sequence[['action.physical.variety.Theft']]
+  theftloss <- sequence.flat[['sequence.action.error.variety.Loss']] | 
+    sequence.flat[['sequence.action.physical.variety.Theft']]
   vfilter <- vfilter | malware | theftloss
-  errors <- veris[['action.Error']] & !vfilter
+  errors <- sequence.flat[['sequence.action.Error']] & !vfilter
   vfilter <- vfilter | errors
   other <- !vfilter
   pats <- data.frame(pos, webapp, misuse, theftloss, errors, malware,
@@ -359,17 +349,19 @@ getpattern <- function(sequence) {
                 "Cyber-Espionage",
                 "Everything Else")
   colnames(pats) <- patcols  
-  # convert T/F to colname if True
-  named.df <- do.call(cbind, lapply(colnames(pats), function(x) {
-    ifelse(pats[ ,x], x, NA)
-  }))
-  # now reduce each row to a single label, return the vector
-  retval <- apply(named.df, 1, function(x) {
-    x[!is.na(x)][1]
-  })
+  # Commenting out named.df/retval stuff as single-pattern column is misleadering since pattern is non-exclusively multinomial. - gdb 17-07-07
+  # # convert T/F to colname if True
+  # named.df <- do.call(cbind, lapply(colnames(pats), function(x) {
+  #   ifelse(pats[ ,x], x, NA)
+  # }))
+  # # now reduce each row to a single label, return the vector
+  # retval <- apply(named.df, 1, function(x) {
+  #   x[!is.na(x)][1]
+  # })
   colnames(pats) <- paste0("pattern.", patcols)
-  retval <- factor(retval, levels=patcols, ordered=T)  
-  cbind(data.table(pattern=retval), pats)
+  # retval <- factor(retval, levels=patcols, ordered=T)  
+  # cbind(data.table(pattern=retval), pats)
+  pats
 }
 
 #' Map VERIS fields to data type.
