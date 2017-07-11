@@ -1,3 +1,9 @@
+3.0.9005
+* getPatterns() and post.proc() now working
+* consequently json2veris is now working
+* flatten() should also be working
+* no getenum() for sequenced dataframes exists yet.
+
 3.0.9004.1
 * finished getPatterns() and post.proc()
 * still needs testing

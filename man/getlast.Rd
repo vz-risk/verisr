@@ -13,3 +13,4 @@ getlast(nm)
 Givn a vector with one or more column names (veris fields), this will
 return the last string in the name, as it is seperated by [.].
 }
+

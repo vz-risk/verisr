@@ -15,3 +15,4 @@ getnth(nm, which = 2)
 Givn a vector with one or more column names (veris fields), this will
 return the nth string in the name, as it is seperated by [.].
 }
+

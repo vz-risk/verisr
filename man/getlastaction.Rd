@@ -14,3 +14,4 @@ Givn a vector with one or more column names (veris fields), this will
 return the last string in the name, as it is seperated by [.].  It will
 also assume this is the action and attempt to map nice names to the name.
 }
+

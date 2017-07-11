@@ -166,6 +166,10 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   #  Instead, need to standardize NAs in veris.
   # colnames(veris) <- gsub('Not Applicable', 'NA', colnames(veris), ignore.case=TRUE) # this causes more problems than it solves. 17-01-17 GDB
 
+  if (progressbar) {
+    print(proc.time() - savetime)
+    message("Beginning post processing.  This may take a while as well.")
+  }
   veris <- post.proc(veris) # TODO: ADD BACK IN AND UPDATE APPROPRIATELY
 
   # veris <- as.data.frame(veris) # convert data.table to data.frame because data tables are evil. - 17-01-17. It's now outputting a dataframe. 17-06-23
@@ -184,6 +188,7 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
 #' Change in 1.1.3: now adds dummar vars for each pattern as "pattern.*"
 #' 
 #' @param veris the verisr object
+#' @export
 post.proc <- function(veris) {
 
   ### OLD
@@ -259,7 +264,7 @@ post.proc <- function(veris) {
   ind2.tmp <- industry2[, c("code", "shorter")]
   names(ind2.tmp) <- c("extra.code", "victim.industry.name")
   df[["extra.code"]] <- substr(df[["victim.industry"]], 1, 2)
-  df <- merge(df, ind2.tmp, by="extra.code")
+  df <- merge(df, ind2.tmp, by="extra.code", all.x=TRUE)
   df <- df[, "extra.code" != names(df)]
   
   # actor.partner.industry

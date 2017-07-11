@@ -11,3 +11,4 @@ This returns a named vector where the names are the column names
 in the final verisr data table and the valus are suitable for using
 in a regex in the existing column names.
 }
+

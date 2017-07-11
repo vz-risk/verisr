@@ -56,3 +56,4 @@ a2 <- getenum(veris, "action", primary="asset.variety")
 a4 <- getenum(veris, c("action", "asset.variety", "actor", "attribute"))
 }
 }
+

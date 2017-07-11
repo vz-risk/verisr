@@ -4,13 +4,13 @@
 \alias{getpattern}
 \title{Determine the patterns from the 2014 Verizon DBIR}
 \usage{
-getpattern(sequence)
+getpattern(sequence, rowname = "extra.rowname")
 }
 \arguments{
 \item{sequence}{the unnested sequence column from a verisr object}
 
 \item{rowname}{string identifying column uniquely identifying rows
-Defaults to 'rowname'}
+Defaults to 'extra.rowname'}
 }
 \description{
 given a verisr object, this will determine which pattern the 
@@ -27,3 +27,4 @@ pat <- getpattern(veris.sample)
 # can summarize the results
 table(pat)
 }
+

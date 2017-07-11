@@ -15,3 +15,4 @@
 Displays a four panel barplot of a verisr object
 }
 \keyword{internal}
+

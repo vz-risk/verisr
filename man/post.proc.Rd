@@ -16,3 +16,4 @@ like the victim.industry2 and industry3,
 \details{
 Change in 1.1.3: now adds dummar vars for each pattern as "pattern.*"
 }
+

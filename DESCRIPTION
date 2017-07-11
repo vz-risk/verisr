@@ -1,11 +1,11 @@
 Package: verisr
 Type: Package
 Title: Tools for working with VERIS objects
-Version: 3.0.9004.1
+Version: 3.0.9005
 Date: 2017-04-25
 Authors@R: c( person("Gabriel", "Bassett", email = "gabriel.bassett@verizon.com",
     role = c("cre", "aut")) )
-Description: VERISR loads up VERIS JSON objects and offers convenience 
+Description: VERISR loads up VERIS JSON objects and offers convenience
     functions.
 License: GPL-2
 Depends:
@@ -28,4 +28,4 @@ Imports:
 Suggests:
     testthat,
     dplyr
-RoxygenNote: 6.0.1
+RoxygenNote: 5.0.1

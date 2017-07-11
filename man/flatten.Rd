@@ -10,6 +10,8 @@ flatten(veris, level = NULL, row.name = "extra.rowname")
 \item{veris}{The verisr object to flatten}
 
 \item{level}{Used during recursion}
+
+\item{row.name}{Column to indicate unique rows in parent dataframe}
 }
 \value{
 flattened verisr object
@@ -17,3 +19,4 @@ flattened verisr object
 \description{
 (A flattened verisr object has no list columns)
 }
+

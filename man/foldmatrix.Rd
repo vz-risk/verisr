@@ -28,3 +28,4 @@ Each cell within the matrix will be a proprotion of incidents that either have t
 or match the pattern passed in a names list, depending if the rows argument is a vector of column
 names or a names list of logical filters respectively.
 }
+
