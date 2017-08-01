@@ -69,4 +69,3 @@ Additionally, unlike getenumCI(), this does not provide a count of
     percentages which are meaningless for values not included in the 
     sample.
 }
-

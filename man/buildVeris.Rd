@@ -22,4 +22,3 @@ list(DT, name1=list(), name2=list(), etc) where name is the name
 of a column which will be a list of data frames and list() is
 the same recursive structure, starting with a DT.
 }
-

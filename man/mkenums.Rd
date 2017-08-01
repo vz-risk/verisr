@@ -18,4 +18,3 @@ Given a json schema for VERIS, this function will return a vector
 of columns names to be set in the verisr object.
 }
 \keyword{json}
-

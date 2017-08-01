@@ -43,4 +43,3 @@ NOTE: list columns in empty list columns are not created as it
     given type, for example 'People', under multiple sequence 
     steps per record across multiple records.)
 }
-

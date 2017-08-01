@@ -93,4 +93,3 @@ getenumCI(vcdb, "asset.cloud")
 getenumCI(vcdb, "action.social.variety.Phishing")
 getenumCI(vcdb, "actor.*.motive", ci.method="wilson", na=FALSE)
 }
-

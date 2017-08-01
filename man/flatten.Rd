@@ -19,4 +19,3 @@ flattened verisr object
 \description{
 (A flattened verisr object has no list columns)
 }
-

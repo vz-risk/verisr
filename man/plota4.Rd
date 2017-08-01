@@ -16,4 +16,3 @@ plota4(veris, title = "A4 Grid", freq = T)
 \description{
 This will create the a4 grid (see Verizon's Data Breach Inves 2012) and return a ggplot object.
 }
-

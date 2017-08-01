@@ -14,4 +14,3 @@ getvnamelong(veris, curname = NULL)
 \description{
 This will grab all the field names from a veris object.
 }
-

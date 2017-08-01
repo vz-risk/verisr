@@ -12,4 +12,3 @@ getlogical(veris)
 \description{
 Given a verisr object this will return a vector of column names which are logical values.
 }
-

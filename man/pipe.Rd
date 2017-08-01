@@ -7,4 +7,3 @@
 Pipe operator
 }
 \keyword{internal}
-

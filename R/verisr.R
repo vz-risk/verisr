@@ -278,6 +278,10 @@ post.proc <- function(veris) {
     tidyr::nest(.key = "sequence") %>%
     dplyr::arrange(rowname)
   veris[["sequence"]] <- df[["sequence"]]
+  
+  # add sequence length
+  veris[["sequence.length"]] <- unlist(lapply(veris[["sequence"]], nrow))
+  
   ###
   
   print("veris dimensions")

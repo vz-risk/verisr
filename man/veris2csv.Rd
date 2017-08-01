@@ -13,4 +13,3 @@ veris2csv(dir = ".")
 given a verisr object, this will create a matrix of the data 
 suitable for saving off as a CSV.
 }
-

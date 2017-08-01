@@ -39,4 +39,3 @@ hacking <- getenum(veris, "action.hacking.variety")
 external <- getenum(veris, "actor.external.motive")
 }
 }
-

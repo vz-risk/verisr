@@ -1,3 +1,6 @@
+3.0.9006
+* starting on necessities for getenumCI to work on hierarchical verisr objects, specifically recurse_columns
+
 3.0.9005
 * getPatterns() and post.proc() now working
 * consequently json2veris is now working

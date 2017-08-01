@@ -25,4 +25,3 @@ save(veris.sample, file="data/veris.sample.rda", compress="xz")
 }
 }
 \keyword{data}
-

@@ -27,4 +27,3 @@ pat <- getpattern(veris.sample)
 # can summarize the results
 table(pat)
 }
-

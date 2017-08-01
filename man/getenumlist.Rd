@@ -21,4 +21,3 @@ Note: Can do a special "industryN" request and it will chop
 off the industry at the N value or return same length of zeros
 if it isn't long enough.
 }
-
