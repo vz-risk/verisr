@@ -110,7 +110,7 @@ getenumDeep <- function(veris,
   }
   
   # TODO: Test if sequence is 'by' or 'enum'.  If it's 'by', ensure enum is in it.  If it's 'enum' and there's a 'by', ensure 'by' is above or at the same level as it.
-  col.locs <- recurse_columns(df, c(by, enum))
+  # col.locs <- recurse_columns(df, c(by, enum))
   if (by == "step" && !grep("sequence", enum[1])) stop("To enumerate by 'sequence', 'enum' must be a feature within 'sequence'.  (For example, 'sequence.action'.)") 
   if (enum == "sequence") {
     warning("You cannot enumerate 'sequence'.  Setting _enum_ to 'sequence.length' instead.  Next time please either set _enum_ to 'sequence.length' (the number of steps in the sequence) or _by_ to 'sequence'.")

@@ -1,3 +1,10 @@
+3.0.9007
+* flatten() mostly working.  Not tested with getenumDeep.  Still seems to crash for unknown reasons.
+* recurse_columns is no longer used.
+* 'columns' removed from flatten.  In theory I think it could be applied to the first item in the df.unjoined list.  Currently filtering happens after joining and so while the column may be included in it's deepest dataframe, during subsequent joins and iterations it will be removed which is counterproductive.
+* Added 'sequence' boolean value to flatten() to indicate whether you want to flatten sequence or separate it out by step.  getenumDeep() will need to use this when by="sequence".  (When enum=sequence, 'sequence.length' can be used.)
+
+
 3.0.9006
 * starting on necessities for getenumCI to work on hierarchical verisr objects, specifically recurse_columns
 

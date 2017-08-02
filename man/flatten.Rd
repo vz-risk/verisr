@@ -4,12 +4,23 @@
 \alias{flatten}
 \title{Convert a hierarchical verisr object to a flattened verisr object}
 \usage{
-flatten(veris, level = NULL, row.name = "extra.rowname")
+flatten(veris, level = NULL, sequence = FALSE, row.name = "extra.rowname")
 }
 \arguments{
 \item{veris}{The verisr object to flatten}
 
 \item{level}{Used during recursion}
+
+\item{sequence}{logical.  If FALSE, sequence columns within sequence are
+flattened.  (e.g. sequence[[1]][1:2, "action.hacking.variety.MitM"]
+becomes sequence.action.hacking.variety.MitM) If TRUE, each row-column 
+combination within sequence receives a column.  (e.g. 
+sequence[[1]][1:2, "action.hacking.variety.MitM"] becomes 
+sequence.1.action.hacking.variety.MitM and 
+sequence.2.action.hacking.variety.MitM.)  FALSE is most the most common
+value as it results in a data frame similar to the classic verisr data
+frame.  TRUE is only useful if the goal is to compare different steps
+of the sequence.}
 
 \item{row.name}{Column to indicate unique rows in parent dataframe}
 }

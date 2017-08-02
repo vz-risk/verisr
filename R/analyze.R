@@ -3,35 +3,57 @@
 #' (A flattened verisr object has no list columns)
 #' 
 #' @param veris The verisr object to flatten
-#' @param columns Columns to keep
+# #' @param columns Columns to keep
 #' @param level Used during recursion
+#' @param sequence logical.  If FALSE, sequence columns within sequence are
+#'     flattened.  (e.g. sequence[[1]][1:2, "action.hacking.variety.MitM"]
+#'     becomes sequence.action.hacking.variety.MitM) If TRUE, each row-column 
+#'     combination within sequence receives a column.  (e.g. 
+#'     sequence[[1]][1:2, "action.hacking.variety.MitM"] becomes 
+#'     sequence.1.action.hacking.variety.MitM and 
+#'     sequence.2.action.hacking.variety.MitM.)  FALSE is most the most common
+#'     value as it results in a data frame similar to the classic verisr data
+#'     frame.  TRUE is only useful if the goal is to compare different steps
+#'     of the sequence.
 #' @param row.name Column to indicate unique rows in parent dataframe
 #' @return flattened verisr object
 #' @export
-flatten <- function(veris, columns=NULL, level=NULL, row.name="extra.rowname") {
-  # TODO, if columns are specified, should remove rows that are all 'false'
+flatten <- function(veris, 
+                    # columns=NULL, 
+                    level=NULL, 
+                    sequence=FALSE, 
+                    row.name="extra.rowname") {
   
   
-  df <- do.call(cbind.data.frame, 
-    c(
-      veris[ , lapply(veris, class) != 'list'], # columns that don't need parsing
-      lapply(names(veris)[lapply(veris, class) == 'list'], function(n) { # each of the list columns
-        if (!is.null(columns) && n %in% columns) stop(paste0("The only list column which may be used to filter is 'sequence'. Remove ", n, " from column list."))
-        
-        # turn the column vector into a dataframe of the colums plus a 'row.name' column with row numbers to be used to join with the original DF
-        if (n == "sequence") {  # this adds a 'sequence' column within the 'sequence' list column dataframes equating to the row number
-          veris[[n]] <- lapply(veris[[n]], function(df) { 
-            if (nrow(df) > 0) df[["sequence"]] <- as.factor(1:nrow(df))
-            df
-          })
-        }
-        df.l <- dplyr::bind_rows(veris[[n]], .id=row.name)
-        df.l[[row.name]] <- as.integer(df.l[[row.name]])
-        if (nrow(df.l) == 0) { # if there's nothing in the list, just return a column of NAs.
-          setNames(data.frame(rep(NA, nrow(veris))), ifelse(is.null(level), n, paste(level, n, sep=".")))
-        } else {
-          # recurse
-          df.l <- flatten(df.l, columns=columns, level=n, row.name=row.name)
+  
+  df.unjoined <- c(
+    veris[ , lapply(veris, class) != 'list'], # columns that don't need parsing
+    lapply(names(veris)[lapply(veris, class) == 'list'], function(n) { # each of the list columns
+      # if (!is.null(columns) && n != "sequence" && n %in% columns) stop(paste0("The only list column which may be used to filter is 'sequence'. Remove ", n, " from column list."))
+      
+      # turn the column vector into a dataframe of the colums plus a 'row.name' column with row numbers to be used to join with the original DF
+      if (n == "sequence" & sequence==TRUE) {  # this adds a 'sequence' column within the 'sequence' list column dataframes equating to the row number
+        veris[[n]] <- lapply(veris[[n]], function(df) { 
+          ### Next two lines would convert sequence to a column.  Unnecessary when converting each sequence df to a single row as below
+          # if (nrow(df) > 0) df[["sequence"]] <- as.factor(1:nrow(df))
+          # df
+          ### The below lines convert the dataframe into a single row.
+          do.call(cbind, lapply(seq_len(nrow(df)), function(i) {setNames(df[i, ], paste(i, names(df), sep="."))}))
+        })
+      }
+      df.l <- dplyr::bind_rows(veris[[n]], .id=row.name)
+      df.l[[row.name]] <- as.integer(df.l[[row.name]])
+      # because the joine process for 'sequence' can introduce NAs in logical columns, we need to find them and change them to 'FALSE'
+      df.l[lapply(df.l, class)=="logical"][is.na(df.l[lapply(df.l, class)=="logical"])] <- FALSE
+      if (nrow(df.l) == 0) { # if there's nothing in the list, just return a column of NAs.
+        setNames(data.frame(rep(NA, nrow(veris))), ifelse(is.null(level), n, paste(level, n, sep=".")))
+      } else {
+        # recurse
+        df.l <- flatten(df.l, 
+                        # columns=ifelse(is.null(n), columns, gsub(paste0("^",n, "[.](.*)"), "\\1", columns)), # strips leading column name 
+                        level=n, 
+                        row.name=row.name)
+        if (nrow(df.l) != 0) { # if no rows exist, don't go through the trouble of binding them
           rowname_child <- paste(n, row.name, sep=".")
           ret <- as.data.frame(
             lapply(df.l, function(c) {
@@ -44,7 +66,7 @@ flatten <- function(veris, columns=NULL, level=NULL, row.name="extra.rowname") {
               else warning(paste0("Column ", names(c), " of class ", class(c), " not included!") )
             }), stringsAsFactors = FALSE)
           names(ret) <- names(df.l)
-          # WARNING: There could be multiple 'row.namee' in this so need to be specific about it for this level.
+          # WARNING: There could be multiple 'row.name' in this so need to be specific about it for this level.
           ret[ , rowname_child] <- 1:nrow(veris)
           # join on rowname.
           # TODO: Probably just join.
@@ -57,9 +79,11 @@ flatten <- function(veris, columns=NULL, level=NULL, row.name="extra.rowname") {
           # return to be bound with other columns
           ret
         }
-      })
-    )
+      }
+    })
   )
+  df.unjoined[sapply(df.unjoined, is.null)] <- NULL
+  df <- do.call(cbind.data.frame, df.unjoined)
   
   # Need to do the stupid trick with asset.assets and data.variety (amount -> variety.amount).
   if (('amount' %in% names(df)) & (any(grepl("variety.", names(df))))) {
@@ -76,11 +100,28 @@ flatten <- function(veris, columns=NULL, level=NULL, row.name="extra.rowname") {
     }
   }
 
-  if (!is.null(columns)) {
-    # filter columns
-    df <- df[, intersect(names(df), columns)]
-    # filter out empty rows
-    df <- df[apply(df, MARGIN=1, function(r) {all(is.na(r) | r == FALSE)}), ]
+  # # if we are downselecting to columns, do that here.  Lots of edge cases to handle.
+  # if (!is.null(columns)) {
+  #   # filter columns
+  #   # df <- df[, intersect(names(df), c(columns, row.name))]
+  #   # filter out empty rows
+  #   ## This could potentially improve performance, but I'm commenting out as I"m concerned about it's effect on sample size. - gdb 170801
+  #   # df <- df[apply(df, MARGIN=1, function(r) {all(is.na(r) | r == FALSE)}), ]
+  #   columns.matching <- grep(paste0("^",paste(columns, collapse="|"),"[.][A-Z0-9][^.]*$"), names(df), value=TRUE)
+  #   if (length(columns.matching) <= 0) {
+  #     columns.matching <- grep(paste0("^",paste(columns, collapse="|"),"$"), names(df), value=TRUE)
+  #   }
+  #   # message(paste(c(level, columns.matching, row.name), collapse=", ")) # DEBUG
+  #   if (!is.null(level)) columns.matching <- c(columns.matching, row.name)
+  #   df <- df[, columns.matching]
+  # }
+  
+  message(level)
+  
+  
+  if (length(names(df)) <= 1) { # if none of the selected columns are in the dataframe, no reason to do all the rest of that work.
+   if (is.null(level)) warning("No columns matched")
+   return(data.frame())
   }
   
   if (!is.null(level)) {  # not the top and more than 1 so flatten
@@ -120,6 +161,8 @@ flatten <- function(veris, columns=NULL, level=NULL, row.name="extra.rowname") {
   # fix sequence step number column name if it exists
   names(df) <- gsub("^sequence[.]sequence$", "sequence", names(df))
   
+  # return
+  # NOTE: additional return above in the case that no columns were selected
   df
 }
 
