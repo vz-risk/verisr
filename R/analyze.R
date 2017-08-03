@@ -3,7 +3,7 @@
 #' (A flattened verisr object has no list columns)
 #' 
 #' @param veris The verisr object to flatten
-# #' @param columns Columns to keep
+#' @param columns Columns to keep
 #' @param level Used during recursion
 #' @param sequence logical.  If FALSE, sequence columns within sequence are
 #'     flattened.  (e.g. sequence[[1]][1:2, "action.hacking.variety.MitM"]
@@ -19,16 +19,16 @@
 #' @return flattened verisr object
 #' @export
 flatten <- function(veris, 
-                    # columns=NULL, 
+                    columns=NULL, 
                     level=NULL, 
                     sequence=FALSE, 
                     row.name="extra.rowname") {
   
   
   
-  df.unjoined <- c(
-    veris[ , lapply(veris, class) != 'list'], # columns that don't need parsing
-    lapply(names(veris)[lapply(veris, class) == 'list'], function(n) { # each of the list columns
+
+  df.d <- veris[ , lapply(veris, class) != 'list'] # columns that don't need parsing
+  df.l <- lapply(names(veris)[lapply(veris, class) == 'list'], function(n) { # each of the list columns
       # if (!is.null(columns) && n != "sequence" && n %in% columns) stop(paste0("The only list column which may be used to filter is 'sequence'. Remove ", n, " from column list."))
       
       # turn the column vector into a dataframe of the colums plus a 'row.name' column with row numbers to be used to join with the original DF
@@ -49,10 +49,16 @@ flatten <- function(veris,
         setNames(data.frame(rep(NA, nrow(veris))), ifelse(is.null(level), n, paste(level, n, sep=".")))
       } else {
         # recurse
-        df.l <- flatten(df.l, 
-                        # columns=ifelse(is.null(n), columns, gsub(paste0("^",n, "[.](.*)"), "\\1", columns)), # strips leading column name 
-                        level=n, 
-                        row.name=row.name)
+        if (is.null(columns)) {
+          df.l <- flatten(df.l, 
+                          level=n, 
+                          row.name=row.name)          
+        } else {
+          df.l <- flatten(df.l, 
+                          columns= switch(is.null(n), gsub(paste0("^",n, "[.](.*)"), "\\1", columns), columns), # strips leading column name 
+                          level=n, 
+                          row.name=row.name)
+        }
         if (nrow(df.l) != 0) { # if no rows exist, don't go through the trouble of binding them
           rowname_child <- paste(n, row.name, sep=".")
           ret <- as.data.frame(
@@ -81,9 +87,30 @@ flatten <- function(veris,
         }
       }
     })
-  )
-  df.unjoined[sapply(df.unjoined, is.null)] <- NULL
-  df <- do.call(cbind.data.frame, df.unjoined)
+  # df.unjoined[sapply(df.unjoined, is.null)] <- NULL
+  
+  # if we are downselecting to columns, do that here.  Lots of edge cases to handle.
+  if (!is.null(columns)) {
+    # filter columns
+    # df <- df[, intersect(names(df), c(columns, row.name))]
+    # filter out empty rows
+    ## This could potentially improve performance, but I'm commenting out as I"m concerned about it's effect on sample size. - gdb 170801
+    # df <- df[apply(df, MARGIN=1, function(r) {all(is.na(r) | r == FALSE)}), ]
+    columns.matching <- grep(paste0("^",paste(columns, collapse="|"),"[.][A-Z0-9][^.]*$"), names(df.d), value=TRUE)
+    if (length(columns.matching) <= 0) {
+      columns.matching <- grep(paste0("^",paste(columns, collapse="|"),"$"), names(df.d), value=TRUE)
+    }
+    # message(paste(c(level, columns.matching, row.name), collapse=", ")) # DEBUG
+    if (!is.null(level)) columns.matching <- c(columns.matching, row.name)
+    message(level)
+    df.d <- df.d[columns.matching]
+  }
+  
+  # Remove null columns
+  df.l[sapply(df.l, is.null)] <- NULL
+  
+  # join the dataframe of the original data frame plus data frame'd list columns
+  df <- do.call(cbind.data.frame, c(df.d, df.l))
   
   # Need to do the stupid trick with asset.assets and data.variety (amount -> variety.amount).
   if (('amount' %in% names(df)) & (any(grepl("variety.", names(df))))) {
@@ -100,25 +127,6 @@ flatten <- function(veris,
     }
   }
 
-  # # if we are downselecting to columns, do that here.  Lots of edge cases to handle.
-  # if (!is.null(columns)) {
-  #   # filter columns
-  #   # df <- df[, intersect(names(df), c(columns, row.name))]
-  #   # filter out empty rows
-  #   ## This could potentially improve performance, but I'm commenting out as I"m concerned about it's effect on sample size. - gdb 170801
-  #   # df <- df[apply(df, MARGIN=1, function(r) {all(is.na(r) | r == FALSE)}), ]
-  #   columns.matching <- grep(paste0("^",paste(columns, collapse="|"),"[.][A-Z0-9][^.]*$"), names(df), value=TRUE)
-  #   if (length(columns.matching) <= 0) {
-  #     columns.matching <- grep(paste0("^",paste(columns, collapse="|"),"$"), names(df), value=TRUE)
-  #   }
-  #   # message(paste(c(level, columns.matching, row.name), collapse=", ")) # DEBUG
-  #   if (!is.null(level)) columns.matching <- c(columns.matching, row.name)
-  #   df <- df[, columns.matching]
-  # }
-  
-  message(level)
-  
-  
   if (length(names(df)) <= 1) { # if none of the selected columns are in the dataframe, no reason to do all the rest of that work.
    if (is.null(level)) warning("No columns matched")
    return(data.frame())

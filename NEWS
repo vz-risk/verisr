@@ -1,3 +1,7 @@
+3.0.9007.1
+* added 'columns' back in to flatten, but does not seem to be applied.
+* crashes on running flatten seem to be environmental rather than code
+
 3.0.9007
 * flatten() mostly working.  Not tested with getenumDeep.  Still seems to crash for unknown reasons.
 * recurse_columns is no longer used.

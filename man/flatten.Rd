@@ -4,10 +4,13 @@
 \alias{flatten}
 \title{Convert a hierarchical verisr object to a flattened verisr object}
 \usage{
-flatten(veris, level = NULL, sequence = FALSE, row.name = "extra.rowname")
+flatten(veris, columns = NULL, level = NULL, sequence = FALSE,
+  row.name = "extra.rowname")
 }
 \arguments{
 \item{veris}{The verisr object to flatten}
+
+\item{columns}{Columns to keep}
 
 \item{level}{Used during recursion}
 
