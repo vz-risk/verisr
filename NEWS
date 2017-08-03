@@ -1,3 +1,7 @@
+3.0.9008
+* fixed columns filtering issues
+* getenumDeep still needs fixing.
+
 3.0.9007.1
 * added 'columns' back in to flatten, but does not seem to be applied.
 * crashes on running flatten seem to be environmental rather than code

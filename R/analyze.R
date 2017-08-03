@@ -45,9 +45,9 @@ flatten <- function(veris,
       df.l[[row.name]] <- as.integer(df.l[[row.name]])
       # because the joine process for 'sequence' can introduce NAs in logical columns, we need to find them and change them to 'FALSE'
       df.l[lapply(df.l, class)=="logical"][is.na(df.l[lapply(df.l, class)=="logical"])] <- FALSE
-      if (nrow(df.l) == 0) { # if there's nothing in the list, just return a column of NAs.
-        setNames(data.frame(rep(NA, nrow(veris))), ifelse(is.null(level), n, paste(level, n, sep=".")))
-      } else {
+      # if (nrow(df.l) == 0) { # if there's nothing in the list, just return a column of NAs.
+      #   setNames(data.frame(rep(NA, nrow(veris))), ifelse(is.null(level), n, paste(level, n, sep=".")))
+      # } else {
         # recurse
         if (is.null(columns)) {
           df.l <- flatten(df.l, 
@@ -55,7 +55,7 @@ flatten <- function(veris,
                           row.name=row.name)          
         } else {
           df.l <- flatten(df.l, 
-                          columns= switch(is.null(n), gsub(paste0("^",n, "[.](.*)"), "\\1", columns), columns), # strips leading column name 
+                          columns= gsub(paste0("^",n, "[.](.*)"), "\\1", columns), # strips leading column name 
                           level=n, 
                           row.name=row.name)
         }
@@ -85,7 +85,7 @@ flatten <- function(veris,
           # return to be bound with other columns
           ret
         }
-      }
+      # }
     })
   # df.unjoined[sapply(df.unjoined, is.null)] <- NULL
   
@@ -97,18 +97,25 @@ flatten <- function(veris,
     ## This could potentially improve performance, but I'm commenting out as I"m concerned about it's effect on sample size. - gdb 170801
     # df <- df[apply(df, MARGIN=1, function(r) {all(is.na(r) | r == FALSE)}), ]
     columns.matching <- grep(paste0("^",paste(columns, collapse="|"),"[.][A-Z0-9][^.]*$"), names(df.d), value=TRUE)
-    if (length(columns.matching) <= 0) {
-      columns.matching <- grep(paste0("^",paste(columns, collapse="|"),"$"), names(df.d), value=TRUE)
-    }
+    columns.matching <- c(columns.matching, grep(paste0("^",paste(columns, collapse="|"),"$"), names(df.d), value=TRUE))
     # message(paste(c(level, columns.matching, row.name), collapse=", ")) # DEBUG
-    if (!is.null(level)) columns.matching <- c(columns.matching, row.name)
-    message(level)
-    df.d <- df.d[columns.matching]
+    if (length(columns.matching) > 0) {
+      if (!is.null(level)) columns.matching <- c(columns.matching, row.name)
+      df.d <- df.d[columns.matching]
+    } else {
+      df.d <- NULL
+    }
   }
   
   # Remove null columns
   df.l[sapply(df.l, is.null)] <- NULL
   
+  # If there is nothing here, return an empty data frame
+  if (is.null(df.d) && length(df.l)==0) {
+    if (is.null(level)) warning("No columns matched")
+    return(data.frame())
+  }
+  # message(level) # DEBUG
   # join the dataframe of the original data frame plus data frame'd list columns
   df <- do.call(cbind.data.frame, c(df.d, df.l))
   
@@ -127,10 +134,10 @@ flatten <- function(veris,
     }
   }
 
-  if (length(names(df)) <= 1) { # if none of the selected columns are in the dataframe, no reason to do all the rest of that work.
-   if (is.null(level)) warning("No columns matched")
-   return(data.frame())
-  }
+  # if (length(names(df)) <= 1) { # if none of the selected columns are in the dataframe, no reason to do all the rest of that work.
+  #  if (is.null(level)) warning("No columns matched")
+  #  return(data.frame())
+  # }
   
   if (!is.null(level)) {  # not the top and more than 1 so flatten
     ret <- df %>%
@@ -170,9 +177,11 @@ flatten <- function(veris,
   names(df) <- gsub("^sequence[.]sequence$", "sequence", names(df))
   
   # return
-  # NOTE: additional return above in the case that no columns were selected
+  # NOTE: return above for empty dataframes exists.
   df
 }
+
+
 
 #' Find the locations of vectors in a hierarchical veris object
 #' 
