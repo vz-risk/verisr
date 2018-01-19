@@ -72,12 +72,14 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
     else if (vft[i]=="logical") rep(FALSE, numfil)
     else if (vft[i]=="integer") rep(NA_real_, numfil)
     else if (vft[i]=="double") rep(NA_real_, numfil)
+    else if (vft[i]=="list") vector("list", numfil)
   }))
   setnames(veris, names(vft))
   # get a text progress bar going
   pb <- NULL
   if (progressbar) pb <- txtProgressBar(min = 0, max = length(jfiles), style = 3)
   # in each file, pull out the values and fill in the data table
+  event_chain <- vector("list", numfil) # event_chain will be the only list column, so create teh column separately to add back in. - GDB 180118
   for(i in seq_along(jfiles)) {
     json <- fromJSON(file=jfiles[i], method='C')
     nfield <- nameveris(json, a4, vtype)
@@ -89,12 +91,14 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
                      "\nNot found in schema, source file:", jfiles[i]))
     }
     for(x in names(nfield)) {
-      if(length(nfield[[x]]) > 1) {
-        tt <- tryCatch(set(veris, i=as.integer(i), j=x, value=paste(nfield[[x]], collapse=",")),
-                       error=function(e) e, warning=function(w) w)
-      } else {
-        tt <- tryCatch(set(veris, i=as.integer(i), j=x, value=nfield[[x]]),
-                       error=function(e) e, warning=function(w) w)
+      if (x != "plus.event_chain") { # we will handle plus.event_chain as a 1-off below. - GDB 180118
+        if(length(nfield[[x]]) > 1) {
+          tt <- tryCatch(set(veris, i=as.integer(i), j=x, value=paste(nfield[[x]], collapse=",")),
+                         error=function(e) e, warning=function(w) w)
+        } else { 
+          tt <- tryCatch(set(veris, i=as.integer(i), j=x, value=nfield[[x]]),
+                         error=function(e) e, warning=function(w) w)
+        }
       }
       if(is(tt,"warning")) {
         cat(paste0("Warning found trying to set ", i, ", \"", x, "\" for \"", nfield[[x]], "\"\n"))
@@ -105,15 +109,23 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
       }
       
     }
+    # fill in the event_chain list. - GDB 180118
+    if ("plus.event_chain" %in% names(nfield)) {
+      event_chain[[i]] <- nfield[['plus.event_chain']]
+    }
     if (!is.null(pb)) setTxtProgressBar(pb, i)
   }
   if (!is.null(pb)) close(pb)
+  # veris <- veris[, !grepl("event_chain", names(veris))]
+  veris[, (grep("event_chain[.]", names(veris), value=TRUE)) := NULL]
+  set(veris, j='plus.event_chain', value=event_chain) # store the event_chain list into the data.table as a column - GDB 180118
   # Not Applicable is replaced with NA for consistency
   # WARNING: the below line causes duplicates and overwrites legitimate 'Not Applicable' enumerations (such as plus.attack_difficulty_initial) so removing
   #  Instead, need to standardize NAs in veris.
   # colnames(veris) <- gsub('Not Applicable', 'NA', colnames(veris), ignore.case=TRUE) # this causes more problems than it solves. 17-01-17 GDB
   veris <- post.proc(veris)
   veris <- as.data.frame(veris) # convert data.table to data.frame because data tables are evil. - 17-01-17
+  # veris[['plus.event_chain']] <- event_chain
   class(veris) <- c("verisr", class(veris))
   if(progressbar) {
     print(proc.time() - savetime)
@@ -152,7 +164,7 @@ post.proc <- function(veris) {
                                                 use.names=F), 1L, 3L)]
 
   # victim.industry.name
-  data(industry2, envir = environment())
+  data(industry2, envir = environment(), package='verisr')
   veris$victim.industry.name <- sapply(veris$victim.industry2, function(x) {
     ifelse(x %in% industry2$code, industry2$shorter[which(industry2$code==x)], "Unknown")
   })
@@ -319,8 +331,11 @@ getverisdf <- function(lschema, a4) {
     }
     ifelse(ret=="enum", "logical", ret)
   }, USE.NAMES=F)
-  out <- c(out, rep("logical", length(a4))) # add the convenience columns
-  setNames(out, c(vfield, names(a4)))
+  # add 'plus.event_chain' to names - GDB 180118
+  out <- c(out, rep("logical", length(a4)), "list") # add the convenience columns
+  setNames(out, c(vfield, names(a4), "plus.event_chain"))
+  # out <- c(out, rep("logical", length(a4))) # add the convenience columns
+  # setNames(out, c(vfield, names(a4)))
 }
 
 #' Return a dense list of only the VERIS variables and values in the JSON.
@@ -335,9 +350,10 @@ getverisdf <- function(lschema, a4) {
 #' @param cur the current field name as it is being built
 #' @param outlist the return value being passed internally
 nameveris.recurs <- function(json, vtype, cur=NULL, outlist=list()) {
-  # Three options:
+  # Four options:
   #   named values (fields to loop through)
   #   looped variety object (asset.assets or data variety)
+  #   event chain
   #   a value itself
   
   # if named values, loop through each of the children and recurse to myself
@@ -358,6 +374,10 @@ nameveris.recurs <- function(json, vtype, cur=NULL, outlist=list()) {
         }
       }
     }
+  # if this is an event chain, handle uniquely
+  } else if (cur == "plus.event_chain") {
+    outlist[['plus.event_chain']] = do.call(dplyr::bind_rows, json) # stores DFs vs list-of-list - GDB 180118
+    # outlist[['plus.event_chain']] = json # stores list-of-list vs DF - GDB 180118
   # else this is field to assign, assign it
   } else {
     if (cur %in% names(vtype)) {
