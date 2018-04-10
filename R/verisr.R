@@ -51,11 +51,9 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   savetime <- proc.time()
   # if no schema, try to load it from github
   if (missing(schema)) {
-    x <- getURL("https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json")
-    lschema <- fromJSON(json_str=x)
-  } else {
-    lschema <- fromJSON(file=schema)
-  }  
+    schema <- "https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json"
+  } 
+  lschema <- fromJSON(file=schema)
   # create listing of files
   jfiles <- unlist(sapply(dir, list.files, pattern = "json$", full.names=T))
   numfil <- length(jfiles)
