@@ -86,6 +86,8 @@ library(ggplot2)
 plot(vcdb)
 ```
 
+![](README_files/figure-markdown_github/basic-plot-1.png)
+
     ## TableGrob (2 x 2) "arrange": 4 grobs
     ##   z     cells    name           grob
     ## 1 1 (1-1,1-1) arrange gtable[layout]
@@ -213,4 +215,4 @@ And we can now just visualize that with ggplot in a nice 2x2 grid
 ![](README_files/figure-markdown_github/a2grid-1.png)
 
     ##    user  system elapsed 
-    ##  27.303   0.925  29.208
+    ##  29.804   1.145  35.426
