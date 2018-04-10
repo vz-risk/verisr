@@ -51,11 +51,9 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   savetime <- proc.time()
   # if no schema, try to load it from github
   if (missing(schema)) {
-    x <- getURL("https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json")
-    lschema <- fromJSON(json_str=x)
-  } else {
-    lschema <- fromJSON(file=schema)
-  }  
+    schema <- "https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json"
+  } 
+  lschema <- fromJSON(file=schema)
   # create listing of files
   jfiles <- unlist(sapply(dir, list.files, pattern = "json$", full.names=T))
   numfil <- length(jfiles)
@@ -815,12 +813,8 @@ plot.verisr <- function(x, y, ...) {
     ht.diff <- (highest - this.ht) * 0.5
     simplebar(a4[[x]], x, plot.margin=unit(c(0,0,ht.diff,0), "npc"))
   })
-#   foo <- arrangeGrob(plots[[1]], plots[[2]], plots[[3]], plots[[4]], nrow=2)
-#   print(foo)
-
-#   ggplotGrob <- ggplot2::ggplotGrob
-   print(do.call(arrangeGrob, c(plots, nrow=2)))
-#   print(do.call(grid.arrange, c(plots, nrow=2)))
+  
+   print(do.call(grid.arrange, list(grobs = plots, nrow = 2)))
 }
 
 #' Convenience function to pull the logical columns from verisr object

@@ -1,20 +1,20 @@
 verisr
 ======
 
-This package is to support data analysis within the VERIS framework (<http://veriscommunity.net>). It is intended to work directly with raw JSON and can be used against the VERIS Community Database (VCDB) found at (<http://veriscommunity.net/doku.php?id=public>) and (<https://github.com/vz-risk/VCDB>).
+This package is to support data analysis within the VERIS framework (<http://veriscommunity.net>). It is intended to work directly with raw JSON and can be used against the VERIS Community Database (VCDB) found at (<http://veriscommunity.net/vcdb.html>) and (<https://github.com/vz-risk/VCDB>).
 
 This package has two purposes. First is to convert one or more directories of VERIS (JSON) files into a usable object (in this version it is currently a data.table, but I hope to move to a dplyr object). Second, it offers a set of convenience functions for doing basic information retrieval from the object.
 
 Install it from straight from github:
 
-``` {.r}
+``` r
 # install devtools from https://github.com/hadley/devtools
-devtools::install_github("jayjacobs/verisr")
+devtools::install_github("vz-risk/verisr")
 ```
 
 To begin, load the package and point it at a directory of JSON files storing VERIS data.
 
-``` {.r}
+``` r
 library(verisr)
 vcdb.dir <- "../VCDB/data/json/"
 # may optionally load a custom json schema file.
@@ -25,9 +25,14 @@ if (interactive()) { # show progress bar if the session is interactive
 }
 ```
 
+    ## [1] "veris dimensions"
+    ## [1] 7833 2232
+    ## named integer(0)
+    ## named integer(0)
+
 You can also use a vector of directory names to load files from multiple sources
 
-``` {.r}
+``` r
 library(verisr)
 data_dirs <- c("../VCDB/data/json", "private_data")
 veris <- json2veris(data_dirs)
@@ -35,40 +40,40 @@ veris <- json2veris(data_dirs)
 
 What json2veris() returns is a plain data.table object, which enables you (the developer) to work directly with the data.
 
-``` {.r}
+``` r
 class(vcdb)
 ```
 
-    ## [1] "verisr"     "data.table" "data.frame"
+    ## [1] "verisr"     "data.frame"
 
-``` {.r}
+``` r
 dim(vcdb)
 ```
 
-    ## [1] 4313 1705
+    ## [1] 7833 2232
 
 There are several convenience functions to get a feel for what's in the current verisr object.
 
-``` {.r}
+``` r
 summary(vcdb)
 ```
 
-    ## 4313 incidents in this object.
+    ## 7833 incidents in this object.
 
     ##       actor                action            asset     
-    ##  External:2300   Environmental:   7   Kiosk/Term: 100  
-    ##  Internal:1756   Error        :1176   Media     :1185  
-    ##  Partner : 184   Hacking      :1353   Network   : 126  
-    ##  Unknown : 150   Malware      : 353   Person    : 325  
-    ##                  Misuse       : 747   Server    :1969  
-    ##                  Physical     : 813   Unknown   : 375  
-    ##                  Social       : 303   User Dev  : 930  
-    ##                  Unknown      : 167                    
+    ##  External:3987   Environmental:   8   Embedded  :   2  
+    ##  Internal:3546   Error        :2266   Kiosk/Term: 320  
+    ##  Partner : 349   Hacking      :2078   Media     :2153  
+    ##  Unknown : 210   Malware      : 633   Network   : 152  
+    ##                  Misuse       :1604   Person    : 555  
+    ##                  Physical     :1517   Server    :3587  
+    ##                  Social       : 515   Unknown   : 636  
+    ##                  Unknown      : 233   User Dev  :1431  
     ##                                                        
     ##            attribute   
-    ##  Availability   :1384  
-    ##  Confidentiality:3901  
-    ##  Integrity      : 974  
+    ##  Availability   :2347  
+    ##  Confidentiality:7249  
+    ##  Integrity      :1835  
     ##                        
     ##                        
     ##                        
@@ -76,61 +81,68 @@ summary(vcdb)
     ##                        
     ## 
 
-``` {.r}
+``` r
 library(ggplot2)
 plot(vcdb)
 ```
 
-![plot of chunk basic-plot](./README_files/figure-markdown_github/basic-plot.png)
+![](README_files/figure-markdown_github/basic-plot-1.png)
+
+    ## TableGrob (2 x 2) "arrange": 4 grobs
+    ##   z     cells    name           grob
+    ## 1 1 (1-1,1-1) arrange gtable[layout]
+    ## 2 2 (1-1,2-2) arrange gtable[layout]
+    ## 3 3 (2-2,1-1) arrange gtable[layout]
+    ## 4 4 (2-2,2-2) arrange gtable[layout]
 
 Let's look for a specific variable by getting the data aggregated on a VERIS enumeration. In this case the variety of external actor.
 
-``` {.r}
+``` r
 ext.variety <- getenum(vcdb, "actor.external.variety")
 print(ext.variety)
 ```
 
-    ##                 enum    x    n      freq
-    ##  1:     Acquaintance    2 2300 0.0008696
-    ##  2:         Activist  393 2300 0.1708696
-    ##  3:          Auditor    0 2300 0.0000000
-    ##  4:       Competitor    8 2300 0.0034783
-    ##  5:         Customer    6 2300 0.0026087
-    ##  6:    Force majeure   16 2300 0.0069565
-    ##  7:  Former employee   28 2300 0.0121739
-    ##  8:     Nation-state   25 2300 0.0108696
-    ##  9:  Organized crime  114 2300 0.0495652
-    ## 10:            Other   23 2300 0.0100000
-    ## 11: State-affiliated  197 2300 0.0856522
-    ## 12:        Terrorist    3 2300 0.0013043
-    ## 13:     Unaffiliated  161 2300 0.0700000
-    ## 14:          Unknown 1402 2300 0.6095652
+    ##                enum    x    n    freq
+    ## 1          Activist  477 1676 0.28461
+    ## 2      Unaffiliated  421 1676 0.25119
+    ## 3   Organized crime  350 1676 0.20883
+    ## 4  State-affiliated  211 1676 0.12589
+    ## 5   Former employee   71 1676 0.04236
+    ## 6             Other   47 1676 0.02804
+    ## 7      Nation-state   40 1676 0.02387
+    ## 8     Force majeure   20 1676 0.01193
+    ## 9          Customer   18 1676 0.01074
+    ## 10     Acquaintance   15 1676 0.00895
+    ## 11       Competitor   12 1676 0.00716
+    ## 12        Terrorist    4 1676 0.00239
+    ## 13          Auditor    2 1676 0.00119
+    ## 14          Unknown 2665   NA      NA
 
 You can see this returns the enumeration (enum), the count of that enumeration (x), the sample size (n) of the enumeration class (external actor in this case) and the frequency (freq = x/n). From that, you could create a barplot with ggplot:
 
-``` {.r}
+``` r
 gg <- ggplot(ext.variety, aes(x=enum, y=x))
 gg <- gg + geom_bar(stat="identity", fill="steelblue")
 gg <- gg + coord_flip() + theme_bw()
 print(gg)
 ```
 
-![plot of chunk basic-ggplot](./README_files/figure-markdown_github/basic-ggplot.png)
+![](README_files/figure-markdown_github/basic-ggplot-1.png)
 
 or use a built-in function to do the same thing (but a little prettier).
 
-``` {.r}
+``` r
 print(simplebar(ext.variety, "Variety of Hacking Actions"))
 ```
 
-![plot of chunk internal-plot](./README_files/figure-markdown_github/internal-plot.png)
+![](README_files/figure-markdown_github/internal-plot-1.png)
 
 Filters have changed
 ====================
 
 The way filters are handled are different. The old function of getfilter() has been removed, it would just return a vector of logicals the same length as the verisr object which would indicate which records to use. Since you have the data (the verisr object is just a data.table) and all the enumerations are logical values, it should be trivial to create a filter. For example, to filter on all the incidents with confirmed data loss, and then further filter for hacking vector of web appliation...
 
-``` {.r}
+``` r
 # see the docs on data.table for getting columns like this
 ddfilter <- vcdb[["attribute.confidentiality.data_disclosure.Yes"]]
 webfilter <- vcdb[["action.hacking.vector.Web application"]]
@@ -141,23 +153,23 @@ ddweb <- ddfilter & webfilter
 
 Since these are just logical vectors now, we can use sum() to see how many matches.
 
-``` {.r}
+``` r
 cat("Confirmed data loss events:", sum(ddfilter), "\n")
 ```
 
-    ## Confirmed data loss events: 2517
+    ## Confirmed data loss events: 5076
 
-``` {.r}
+``` r
 cat("Hacking vector of web apps:", sum(webfilter), "\n")
 ```
 
-    ## Hacking vector of web apps: 692
+    ## Hacking vector of web apps: 1028
 
-``` {.r}
+``` r
 cat("Both data loss and web app:", sum(ddweb), "\n")
 ```
 
-    ## Both data loss and web app: 363
+    ## Both data loss and web app: 603
 
 Special names added to verisr object
 ====================================
@@ -180,24 +192,27 @@ Querying Multiple Enumerations
 
 One rather fun feature of the lastest version is the ability to query for an enumeration as it relates to one or more other enumerations. For example, if you wanted to create a A2 grid, which compares the action categories to the asset categories, it's a single query:
 
-``` {.r}
-a2 <- getenum(vcdb, c("action", "asset.variety"))
+``` r
+a2 <- getenumCI(vcdb, "action", "asset.variety")
+a2$by <- sapply(as.character(a2$by), function(x) { 
+  strsplit(x, split = '.', fixed = TRUE)[[1]][3]
+  })
 head(a2)
 ```
 
-    ##        enum  enum1    x    n     freq
-    ## 1:  Malware Server  241 4313 0.055878
-    ## 2:  Hacking Server 1132 4313 0.262462
-    ## 3:   Social Server  225 4313 0.052168
-    ## 4: Physical Server   42 4313 0.009738
-    ## 5:   Misuse Server  457 4313 0.105959
-    ## 6:    Error Server  271 4313 0.062833
+    ##       by     enum    x    n    freq
+    ## 1 Server  Hacking 1788 3513 0.50897
+    ## 2 Server   Misuse  993 3513 0.28266
+    ## 3 Server    Error  595 3513 0.16937
+    ## 4 Server  Malware  419 3513 0.11927
+    ## 5 Server   Social  347 3513 0.09878
+    ## 6 Server Physical   76 3513 0.02163
 
 In previous versions there was a `getenum` and `getenumby` function for one enumeration or multiple enumerations respectively. However, as of version 2.1, `getenumby` is an alias to `getenum` and both calls have the same functionality.
 
 And we can now just visualize that with ggplot in a nice 2x2 grid
 
-![plot of chunk a2grid](./README_files/figure-markdown_github/a2grid.png)
+![](README_files/figure-markdown_github/a2grid-1.png)
 
     ##    user  system elapsed 
-    ##  26.916   0.974  29.340
+    ##  29.804   1.145  35.426
