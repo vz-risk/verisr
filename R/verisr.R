@@ -260,6 +260,10 @@ veriscol <- function(schema) {
     x[x=="variety"] <- "amount"
     paste(x, collapse=".")
   })
+  wonkytype <- sapply(strsplit(wonkyvariety, "[.]"), function(x) {
+    x[x=="variety"] <- "type"
+    paste(x, collapse=".")
+  })
   sort(c(wonkyamount, clean))
 }
 
@@ -422,7 +426,7 @@ nameveris <- function(json, a4, vtype) {
   olist
 }
 
-#' Convenience function for the a4 names and values
+#' Convenience function for the a4 names and values + discovery_method
 #' 
 #' This returns a named vector where the names are the column names 
 #' in the final verisr data table and the valus are suitable for using
@@ -442,11 +446,14 @@ geta4names <- function() {
   attribute <- convenience(paste('attribute', 
                                  c('Confidentiality', 'Integrity', 'Availability'), 
                                  sep="."))
+  discovery_method <- convenience(paste('discovery_method',
+                                 c('External', 'Internal', 'Partner', 'Other', 'Unknown'),
+                                 sep="."))
   assetmap <- c("S "="Server", "N "="Network", "U "="User Dev", "M "="Media", 
                 "P "="Person", "T "="Kiosk/Term", "Un"="Unknown", "E"="Embedded")
   asset <- setNames(paste('asset.assets.variety', names(assetmap), sep='.'),
                     paste('asset.variety', assetmap, sep='.'))
-  c(actor, action, asset, attribute)  
+  c(actor, action, asset, attribute, discovery_method)  
 }
 
 

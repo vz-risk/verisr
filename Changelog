@@ -1,3 +1,6 @@
+version 2.2.0.90001:
+* update to geta4names() to add discovery_method convenience enumerations
+
 version 2.2:  
 * updated json2veris() to create a plus.event_chain column as a list of dataframes. each row is the step, and the column is the 4A.
 
