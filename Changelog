@@ -1,3 +1,6 @@
+version 2.2.0.90001.1:
+* added 'logical' to the list of column types not reported.
+
 version 2.2.0.90001:
 * update to geta4names() to add discovery_method convenience enumerations
 

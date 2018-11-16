@@ -391,7 +391,7 @@ nameveris.recurs <- function(json, vtype, cur=NULL, outlist=list()) {
           outlist[[curname]] = TRUE
         }
       } else {
-        if (!mode(json) %in% c("character", "numeric")) {
+        if (!mode(json) %in% c("character", "numeric", "logical")) {
           cat('mode of', cur, "is", mode(json), "\n")
         }
         outlist[[cur]] = json
