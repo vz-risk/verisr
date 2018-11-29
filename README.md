@@ -16,12 +16,13 @@ To begin, load the package and point it at a directory of JSON files storing VER
 
 ``` {.r}
 library(verisr)
+data('industry2', package='verisr')
 vcdb.dir <- "../VCDB/data/json/"
 # may optionally load a custom json schema file.
 if (interactive()) { # show progress bar if the session is interactive
-  vcdb <- json2veris(vcdb.dir, progressbar=TRUE)
+  vcdb <- json2veris(vcdb.dir, schema="../VCDB/vcdb-merged.json", progressbar=TRUE)
 } else {
-  vcdb <- json2veris(vcdb.dir)  
+  vcdb <- json2veris(vcdb.dir, schema="../VCDB/vcdb-merged.json")  
 }
 ```
 
@@ -29,8 +30,9 @@ You can also use a vector of directory names to load files from multiple sources
 
 ``` {.r}
 library(verisr)
+data('industry2', package='verisr')
 data_dirs <- c("../VCDB/data/json", "private_data")
-veris <- json2veris(data_dirs)
+veris <- json2veris(data_dirs, schema="path/to/schema.json")
 ```
 
 What json2veris() returns is a plain data.table object, which enables you (the developer) to work directly with the data.
