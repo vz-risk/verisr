@@ -1,10 +1,21 @@
 #' Read in all the VERIS incidents (JSON files) in a given directory.
 #'
 #' This function will iterate through all the JSON files (regex pattern of "json$") in
-#' the given directory and parse it as an encoded VERIS record.  This function
-#' requires that a JSON schema be available for the VERIS data.  If the variable is 
-#' not specified, it will attempt to grab the "verisc-merged.json" schema from
+#' the given directory and parse it as an encoded VERIS record.  
+#' 
+#' It also provides the option of passing a vector of individual files.  R's
+#' directory and file parsing functions (list.dirs and list.files) are relatively
+#' slow and files are basically enumerated twice if you specify directories, (once
+#' while you enumerated the directories and once while you enumerated the files).  
+#' Specifying individual files should substantially decrease this time and allows 
+#' the user to use OS-specific file enumeration processes that may be faster than R's.
+#' 
+#' This function requires that a JSON schema be available for the VERIS data.  
+#' If the variable is not specified, it will attempt to grab the 
+#' "verisc-merged.json" schema from
 #' https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json.
+#' 
+#
 #' 
 #' This will return a verisr object, which is a data.table object and can be 
 #' directly accesses as such.
@@ -18,15 +29,20 @@
 #'   * *victim.industry2* will return the first 2 digits of the NAICS code
 #'   * *victim.industry3* same, first 3 digits
 #'   * *victim.orgsize* returns "Large" and "Small" enumerations
+#'   * *discovery_method* will return top level discovery_method categories
 #' 
 #' The victim.secondary.victim_id, external.actor.region, and any other free
 #' text field that can be repeated is being collapsed into a single string 
 #' seperated by a comma at the moment.  If that poses a challnge, open an issue
 #' on it.
 #'
-#' @param dir the directory to list through.  This may be a vector of 
+#' @param dir The directory to list through.  This may be a vector of 
 #' directorites, in which case each all the matching files in each 
-#' directory will be laoded.
+#' directory will be loaded.
+#' @param files a chatacter vector of individual json files to be parsed.  
+#' These will be added to any files found in directories specified 
+#' with 'dir'.  Any duplicates between files found in 'dir' and 'files'
+#' will be removed.
 #' @param schema a full veris schema with enumerations included.
 #' @param progressbar a logical value to show (or not show) a progress bar
 #' @keywords json
@@ -47,7 +63,7 @@
 #' veris <- json2veris(dir="~/vcdb", 
 #'                     schema="~/veris/verisc-local.json")
 #' }
-json2veris <- function(dir=".", schema=NULL, progressbar=F) {
+json2veris <- function(dir=c(), files=c(), schema=NULL, progressbar=F) {
   savetime <- proc.time()
   # if no schema, try to load it from github
   if (missing(schema)) {
@@ -58,6 +74,7 @@ json2veris <- function(dir=".", schema=NULL, progressbar=F) {
   }  
   # create listing of files
   jfiles <- unlist(sapply(dir, list.files, pattern = "json$", full.names=T))
+  jfiles <- unique(c(jfiles, files))
   numfil <- length(jfiles)
   # need to pull these before we loop, used over and over in loop
   a4 <- geta4names() # just returns a (named) character vector of the 4A's and their next level values.  i.e. actor.External
