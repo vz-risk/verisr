@@ -182,7 +182,7 @@ post.proc <- function(veris) {
   #for(x in unique(ind2)) {
   for(x in naics2s) {
     iname <- paste0('victim.industry2.', x)
-    veris[ ,iname:=(ind2==x), with=F]
+    veris[ ,(iname):=(ind2==x)] #, with=F
   }
   ## industry3 may require more prep work since dashes are allowed.
   veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
@@ -197,7 +197,7 @@ post.proc <- function(veris) {
   # actor.partner.industry
   veris[ , actor.partner.industry2 := substring(unlist(veris[ ,"actor.partner.industry", with=F], 
                                                 use.names=F), 1L, 2L)]
-  veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
+  veris[ , actor.partner.industry3 := substring(unlist(veris[ ,"actor.partner.industry", with=F], 
                                                 use.names=F), 1L, 3L)]
   veris <- cbind(veris, getpattern(veris))
   print("veris dimensions")
@@ -744,11 +744,11 @@ getenum2 <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
       } else {
         count <- sum(count)
       }
-      outdf[i, x:=count]
+      outdf[i, (x):=count]
     }
     for(column in cnm) {
       tempcol <- getlast(as.character(unlist(outdf[ , column, with=F])))
-      outdf[ , column:=tempcol, with=F]
+      outdf[ , (column):=tempcol, with=F]
     }
     extra.names <- NULL
     if (length(enum)>1) extra.names <- paste0('enum', seq((length(enum)-1)))

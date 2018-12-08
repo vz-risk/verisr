@@ -1,3 +1,6 @@
+version 2.3.1.0003:
+* Fixed historic data.table settings that caused warnings.
+
 version 2.3.1.0002:
 * Fixed how victim.industry2.XX is created to ensure only legitimate NAICS codes are created and that all of them are created.
 
