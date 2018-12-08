@@ -172,7 +172,15 @@ post.proc <- function(veris) {
   # want an enumeration now, instead of a single list.
   # But Kevin wants both so he is uncommenting the line that Jay commented
   veris[ , victim.industry2 := ind2]
-  for(x in unique(ind2)) {
+  ## Replacing `unique(ind2)` with `naics2s` as not only does it add bad NAICS,
+  ##  if it's a small dataset, it misses legit ones. - GDB 181208
+  ## Current as of 181208
+  naics2s <- c("00", "11", "21", "22", "23", "31", "32",
+               "33", "42", "44", "45", "48", "49", "51",
+               "52", "53", "54", "55", "56", "61", "62",
+               "71", "72", "81", "92")
+  #for(x in unique(ind2)) {
+  for(x in naics2s) {
     iname <- paste0('victim.industry2.', x)
     veris[ ,iname:=(ind2==x), with=F]
   }

@@ -1,3 +1,6 @@
+version 2.3.1.0002:
+* Fixed how victim.industry2.XX is created to ensure only legitimate NAICS codes are created and that all of them are created.
+
 version 2.3.1:
 * added ability to specify files directly to json2veris to alleviate performance problems.
 
