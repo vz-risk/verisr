@@ -18,4 +18,3 @@ created into a data.table.
 \details{
 TODO: need to add the convenience fields in here.
 }
-

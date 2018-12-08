@@ -1,3 +1,6 @@
+version 2.3.1.0004:
+* Updated documentation.
+
 version 2.3.1.0003:
 * Fixed historic data.table settings that caused warnings.
 

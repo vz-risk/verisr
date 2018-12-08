@@ -12,4 +12,3 @@ sortvmatrix(x)
 \description{
 This will sort the columns of a matrix so Wade is happy.
 }
-

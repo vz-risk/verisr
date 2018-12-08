@@ -5,8 +5,8 @@
 \title{Summarizes veris enumerations from verisr objects}
 \usage{
 getenumCI(veris, enum, by = NULL, na.rm = NULL, unk = FALSE,
-  short.names = TRUE, ci.method = c(), ci.level = 0.95, round.freq = 5,
-  na = NULL, ...)
+  short.names = TRUE, ci.method = c(), ci.level = 0.95,
+  round.freq = 5, na = NULL, ...)
 }
 \arguments{
 \item{veris}{A verisr object}
@@ -93,4 +93,3 @@ getenumCI(vcdb, "asset.cloud")
 getenumCI(vcdb, "action.social.variety.Phishing")
 getenumCI(vcdb, "actor.*.motive", ci.method="wilson", na=FALSE)
 }
-

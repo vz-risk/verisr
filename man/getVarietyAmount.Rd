@@ -13,4 +13,3 @@ getVarietyAmount(x)
 This will expand all of the "variety" fields by the amount
 specified in the "amount" field of the same level object.
 }
-

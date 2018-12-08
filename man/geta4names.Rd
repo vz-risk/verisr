@@ -2,7 +2,7 @@
 % Please edit documentation in R/verisr.R
 \name{geta4names}
 \alias{geta4names}
-\title{Convenience function for the a4 names and values}
+\title{Convenience function for the a4 names and values + discovery_method}
 \usage{
 geta4names()
 }
@@ -11,4 +11,3 @@ This returns a named vector where the names are the column names
 in the final verisr data table and the valus are suitable for using
 in a regex in the existing column names.
 }
-

@@ -18,4 +18,3 @@ Given a json schema for VERIS, this function will return a named vector
 where the name is the field and the value is the R mode string or "enum".
 }
 \keyword{json}
-
