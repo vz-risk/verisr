@@ -18,7 +18,7 @@ savetime <- proc.time()
 
 ```{r eval=FALSE}
 # install devtools from https://github.com/hadley/devtools
-devtools::install_github("jayjacobs/verisr")
+devtools::install_github("vz-risk/verisr")
 ```
 
 To begin, load the package and point it at a directory of JSON files storing VERIS data.
