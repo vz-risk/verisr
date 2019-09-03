@@ -88,7 +88,7 @@ plot(vcdb)
 Let's look for a specific variable by getting the data aggregated on a VERIS enumeration. In this case the variety of external actor.
 
 ``` {.r}
-ext.variety <- getenum(vcdb, "actor.external.variety")
+ext.variety <- getenumCI(vcdb, "actor.external.variety")
 print(ext.variety)
 ```
 
@@ -183,7 +183,7 @@ Querying Multiple Enumerations
 One rather fun feature of the lastest version is the ability to query for an enumeration as it relates to one or more other enumerations. For example, if you wanted to create a A2 grid, which compares the action categories to the asset categories, it's a single query:
 
 ``` {.r}
-a2 <- getenum(vcdb, c("action", "asset.variety"))
+a2 <- getenumCI(vcdb, c("action", "asset.variety", na.rm=TRUE)) # `na.rm=TRUE` means "remove cases where the enumeration isn't appliable from the sample size"
 head(a2)
 ```
 
@@ -195,8 +195,7 @@ head(a2)
     ## 5:   Misuse Server  457 4313 0.105959
     ## 6:    Error Server  271 4313 0.062833
 
-In previous versions there was a `getenum` and `getenumby` function for one enumeration or multiple enumerations respectively. However, as of version 2.1, `getenumby` is an alias to `getenum` and both calls have the same functionality.
-
+In previous versions there was a `getenum` and `getenumby` function for one enumeration or multiple enumerations respectively. However, as of version 2.1, `getenumby` is an alias to `getenum` and both calls have the same functionality.  As of version 2.3, `getenum` and `getenumby` are both obselete with `getenumCI` providng effectively the same functionality.
 And we can now just visualize that with ggplot in a nice 2x2 grid
 
 ![plot of chunk a2grid](./README_files/figure-markdown_github/a2grid.png)
