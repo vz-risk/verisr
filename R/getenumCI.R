@@ -66,9 +66,10 @@
 #' getenumCI(vcdb, "asset.variety")
 #' getenumCI(vcdb, "asset.assets.variety")
 #' getenumCI(vcdb, "asset.assets.variety", ci.method="wilson")
-#' getenumCI(vcdb, "asset.cloud")
+#' getenumCI(vcdb, "asset.cloud", na.rm=FALSE)
 #' getenumCI(vcdb, "action.social.variety.Phishing")
-#' getenumCI(vcdb, "actor.*.motive", ci.method="wilson", na=FALSE)
+#' getenumCI(vcdb, "actor.*.motive", ci.method="wilson", na.rm=FALSE)
+#' rm(vcdb)
 getenumCI <- function(veris, 
                       enum, 
                       by=NULL,
@@ -151,7 +152,7 @@ getenumCI <- function(veris,
           enum_type <- "logical"
           short_names <- gsub('^.*[.]([^.]+$)', "\\1", names(subdf))
           logical_enum <- enum_enums
-          enum_enums <- enum_enums <- grep(paste0("^", gsub('^(.*)[.]([^.]+$)', "\\1", logical_enum), "[.][A-Z0-9][^.]*$"), names(subdf), value=TRUE)
+          enum_enums <- grep(paste0("^", gsub('^(.*)[.]([^.]+$)', "\\1", logical_enum), "[.][A-Z0-9][^.]*$"), names(subdf), value=TRUE)
         } else {
           enum_type <- "single_column"
         }

@@ -1,8 +1,8 @@
 Package: verisr
 Type: Package
 Title: Tools for working with VERIS objects
-Version: 2.3.1.0004
-Date: 2018-12-05
+Version: 2.3.1.0005
+Date: 2019-09-04
 Authors@R: c( person("Gabriel", "Bassett", email = "gabriel.bassett@verizon.com",
     role = c("cre", "aut")))
 Description: VERISR loads up VERIS JSON objects and offers convenience 

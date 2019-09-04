@@ -777,11 +777,13 @@ getenum2 <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL,
   outdf
 }
 
+#' @describeIn getenumCI getenumby A wrapper for getenumCI().  Maintained for backwards compatibility.
 #' @export
 getenumby <- function(...) {
   getenum(...)
 }
 
+#' @describeIn getenumCI getenum A wrapper for getenumCI().  Maintained for backwards compatibility.
 #' @export
 getenum <- function(...) {
   getenumCI(...)
