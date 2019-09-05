@@ -1,4 +1,4 @@
-vr <- json2veris("./data")
+vr <- json2veris("./data", schema = "https://raw.githubusercontent.com/vz-risk/VCDB/master/vcdb-merged.json")
 
 test_that("a new verisr object has the correct number of records", {
   expect_equal( nrow( vr), 100)
@@ -26,13 +26,13 @@ test_that("a verisr object counts actors properly: getenum(\"actor\"", {
   # Question: Do we need to test every enumeration that getenum might 
   # see?
   actors <- getenum(vr, "actor")
-  expect_equal(actors[actors$enum=="External",]$x, 52)
-  expect_equal(actors[actors$enum=="Internal",]$x, 42)
-  expect_equal(actors[actors$enum=="Partner",]$x, 6)
-  expect_equal(actors[actors$enum=="Unknown",]$x, 1)
+  expect_equal(actors[actors$enum=="External",]$x, 50)
+  expect_equal(actors[actors$enum=="Internal",]$x, 45)
+  expect_equal(actors[actors$enum=="Partner",]$x, 5)
+  expect_equal(actors[actors$enum=="Unknown",]$x, 4)
 })
 
 test_that("post.proc() properly calculates which records are small and large victims", {
-  expect_equal(sum(vr$victim.orgsize.Small), 22)
-  expect_equal(sum(vr$victim.orgsize.Large), 41)
+  expect_equal(sum(vr$victim.orgsize.Small), 24)
+  expect_equal(sum(vr$victim.orgsize.Large), 39)
 })
