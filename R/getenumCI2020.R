@@ -46,6 +46,7 @@
 #' @param round.freq An integer indicating how many places to round
 #'     the frequency value to. (default = 5)
 #' @param na DEPRECIATED! Use 'na.rm' parameter.
+#' @param top Integer limiting the output to top enumerations.
 #' @param ... A catch all for functions using arguments from previous
 #'     versions of getenum.
 #' @return A data frame summarizing the enumeration
@@ -56,6 +57,7 @@
 #' load(tmp, verbose=TRUE)
 #' chunk <- getenumCI(vcdb, "action.hacking.variety")
 #' chunk
+#' chunk <- getenumCI(vcdb, "action.hacking.variety", top=10)
 #' chunk <- getenumCI(vcdb, "action.hacking.variety", by="timeline.incident.year")
 #' chunk
 #' chunk <- getenumCI(vcdb, 
@@ -70,7 +72,7 @@
 #' getenumCI(vcdb, "action.social.variety.Phishing")
 #' getenumCI(vcdb, "actor.*.motive", ci.method="wilson", na.rm=FALSE)
 #' rm(vcdb)
-getenumCI <- function(veris, 
+getenumCI2020 <- function(veris, 
                       enum, 
                       by=NULL,
                       na.rm = NULL, 
@@ -80,6 +82,7 @@ getenumCI <- function(veris,
                       ci.level=0.95, 
                       round.freq=5, 
                       na = NULL, 
+                      top = NULL,
                       ...) {
   
   # even though the parameter is 'na.rm', we still use 'na' internally.
@@ -161,6 +164,58 @@ getenumCI <- function(veris,
       }
     }
     
+    # Subset to top enums
+    if (!is.null(top)) {
+      if (top < 1) {
+        stop(paste0("Top must be 1 or greater, but is (", top, ")."))
+      }
+      
+      if (enum_type == "logical") {
+        warning(paste0("Parameter 'top' incompatible with single logical column enumeration ", enum_enums, ". Skipping filtering to top."))
+
+      } else {
+        # start by getting a count of each enumeration
+        if (enum_type == "single_column") {
+          enum_counts <- table(subdf[[enum_enums]])
+        } else if (enum_type == "multinomial") {
+          enum_counts <- colSums(subdf[ , enum_enums])
+        } else {
+          stop("class of 'enum' column(s) was not identified, preventing filtering of top items and further processing")
+        }
+        
+        # Remove things that should not be a top enumeration.  This includes 'Other', 'Unknown', and 'na' (if na.rm=TRUE)
+        enum_counts <- enum_counts[!grepl("^(.+[.]|)(O|o)ther$", names(enum_counts))]
+        enum_counts <- enum_counts[!grepl("^(.+[.]|)(U|u)nknown$", names(enum_counts))]
+        if (!is.null(na)) {
+          if (na == FALSE) {
+            enum_counts <- enum_counts[!grepl("^(.+[.]|)NA$", names(enum_counts))]
+          }
+        }
+        
+        # order the enumerations and take the top ones
+        # top enums are the actual top enums, plus 'Other', 'Unknown', and potentially NA
+        top_enums <- c(names(enum_counts[order(enum_counts, decreasing=TRUE)][1:top]), grep("^(.+[.]|)(U|u)nknown$", enum_enums, value=TRUE)) # , grep("^(.+[.]|)(O|o)ther$", enum_enums, value=TRUE)
+        if (!is.null(na)) {
+          if (na == FALSE) {
+            top_enums <- c(top_enums, grep("^(.+[.]|)NA$", enum_enums, value=TRUE))
+          }
+        }
+        
+        # when we assign 'other' to things not in the top enum list, make sure to not assign it to blank or NA as well
+        not_top_enums <- setdiff(names(enum_counts), c(top_enums, ''))
+        not_top_enums <- not_top_enums[!is.na(not_top_enums)]
+        if (length(not_top_enums) > 0) {
+          if (enum_type == "single_column") {
+            subdf[grepl(paste0("^", paste(not_top_enums, collapse="|")), subdf[[enum_enums]]), enum_enums] <- "Other"
+            enum_enums <- union(top_enums, enum_enums)
+          } else {
+            subdf[[paste0(enum, ".Other")]] <- unlist(apply(subdf[, not_top_enums], MARGIN=1, any))
+            enum_enums <- c(intersect(top_enums, enum_enums), paste0(enum, ".Other"))
+          }
+        }
+      }
+    }
+    
     # This allows us to handle numerical/factor/character and logical enumerations
     if (enum_type == "multinomial" | enum_type == "logical") {
       subdf <- subdf[, enum_enums]
@@ -225,27 +280,6 @@ getenumCI <- function(veris,
           n <- n - sum(v[grepl("^(.+[.]|)NA$", names(v))], na.rm=TRUE)
         }
       }
-      
-      # I'm removing the logical column and grouping it in with the multinomial because multinomial is just lots of logical questions currently and this and it could give different results due to handling of 'unknown'. - GDB 170-01-30
-      #    } else if (enum_type == "logical") {
-      #      v <- c(sum(subdf[[enum_enums]], na.rm=TRUE))
-      #      names(v) <- enum_enums
-      #
-      #      # enum_feature <- stringr::str_match(enum_enums, "^(.+)\\.")[1]
-      #      # enum_feature <- unlist(regmatches(enum_enums, regexec("^(.+)\\.", enum_enums)))[1]
-      #      enum_feature <- gsub('^.*[.]([^.]+$)', "\\1", enum_enums)[1]
-      #      # need to remove where the enum is not true but the 'unknown' enumeration of the feature is.
-      #      if (unk == FALSE & paste0(enum_feature, "Unknown") %in% names(subdf)) {
-      #        subdf <- subdf[!(!subdf[[enum_enums]] & subdf[[paste0(enum_feature, "Unknown")]]), ]
-      #      }
-      #      # need to remove where the enum is not true but the 'na' enumeration of the feature is.
-      #      if (!is.null(na)) { 
-      #        if(na == FALSE & paste0(enum_feature, "NA") %in% names(subdf)) {
-      #          subdf <- subdf[!(!subdf[[enum_enums]] & subdf[[paste0(enum_feature, "NA")]]), ]
-      #        }
-      #      }
-      #      n <- nrow(subdf)
-      
     } else {
       stop("class of 'enum' column(s) was not identified, preventing summarization.")
     }

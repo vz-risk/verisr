@@ -1,3 +1,11 @@
+#' The main method for summarizes veris enumerations from verisr objects
+#' 
+#' @inheritDotParams getenumCI2019
+#' @export
+getenumCI <- function(...) {
+  getenumCI2019(...)
+}
+
 #' Summarizes veris enumerations from verisr objects
 #' 
 #' WARNING: This function is incomplete and untested.  DO NOT USE.
