@@ -194,7 +194,7 @@ getenumCI2020 <- function(veris,
         
         # order the enumerations and take the top ones
         # top enums are the actual top enums, plus 'Other', 'Unknown', and potentially NA
-        top_enums <- c(names(enum_counts[rank(-enum-count, ties.method="min") <= top]), grep("^(.+[.]|)(U|u)nknown$", enum_enums, value=TRUE)) # , grep("^(.+[.]|)(O|o)ther$", enum_enums, value=TRUE)
+        top_enums <- c(names(enum_counts[rank(-enum_counts, ties.method="min") <= top]), grep("^(.+[.]|)(U|u)nknown$", enum_enums, value=TRUE)) # , grep("^(.+[.]|)(O|o)ther$", enum_enums, value=TRUE)
         if (!is.null(na)) {
           if (na == FALSE) {
             top_enums <- c(top_enums, grep("^(.+[.]|)NA$", enum_enums, value=TRUE))
