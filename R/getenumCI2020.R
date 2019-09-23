@@ -194,7 +194,7 @@ getenumCI2020 <- function(veris,
         
         # order the enumerations and take the top ones
         # top enums are the actual top enums, plus 'Other', 'Unknown', and potentially NA
-        top_enums <- c(names(enum_counts[order(enum_counts, decreasing=TRUE)][1:top]), grep("^(.+[.]|)(U|u)nknown$", enum_enums, value=TRUE)) # , grep("^(.+[.]|)(O|o)ther$", enum_enums, value=TRUE)
+        top_enums <- c(names(enum_counts[rank(-enum-count, ties.method="min") <= top]), grep("^(.+[.]|)(U|u)nknown$", enum_enums, value=TRUE)) # , grep("^(.+[.]|)(O|o)ther$", enum_enums, value=TRUE)
         if (!is.null(na)) {
           if (na == FALSE) {
             top_enums <- c(top_enums, grep("^(.+[.]|)NA$", enum_enums, value=TRUE))
@@ -202,12 +202,11 @@ getenumCI2020 <- function(veris,
         }
         
         # when we assign 'other' to things not in the top enum list, make sure to not assign it to blank or NA as well
-        not_top_enums <- setdiff(names(enum_counts), c(top_enums, ''))
+        not_top_enums <- setdiff(enum_enums, c(top_enums, ''))
         not_top_enums <- not_top_enums[!is.na(not_top_enums)]
         if (length(not_top_enums) > 0) {
           if (enum_type == "single_column") {
             subdf[grepl(paste0("^", paste(not_top_enums, collapse="|")), subdf[[enum_enums]]), enum_enums] <- "Other"
-            enum_enums <- union(top_enums, enum_enums)
           } else {
             subdf[[paste0(enum, ".Other")]] <- unlist(apply(subdf[, not_top_enums], MARGIN=1, any))
             enum_enums <- c(intersect(top_enums, enum_enums), paste0(enum, ".Other"))
