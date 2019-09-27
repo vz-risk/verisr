@@ -1,3 +1,7 @@
+version 2.3.1.0008:
+* some testing of CI changes.
+* added MCMC option to CI method - UNTESTED
+
 version 2.3.1.0007:
 * initial CI rules changes to enforce sane choices in low sample size situations.  UNTESTED
 

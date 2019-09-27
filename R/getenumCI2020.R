@@ -84,13 +84,12 @@ getenumCI2020 <- function(veris,
                       top = NULL,
                       force = FALSE,
                       ...) {
+  # Below this value for 'n', apply ci best practices from https://github.com/vz-risk/dbir-private/issues/43 unless force = TRUE
+  ci_n <- 30 # chosen semi-arbitrarily, but it is roughly where frequentist normal approximations break down.
+  n_floor <- 5 # chosen semi-arbitrarily.  return empty dataframe
   
   # even though the parameter is 'na.rm', we still use 'na' internally.
   if (!is.null(na.rm)) {
-    # Below this value for 'n', apply ci best practices from https://github.com/vz-risk/dbir-private/issues/43 unless force = TRUE
-    ci_n <- 30 # chosen semi-arbitrarily, but it is roughly where frequentist normal approximations break down.
-    n_floor <- 5 # chosen semi-arbitrarily.  return empty dataframe
-    
     na = !na.rm  # if na.rm is set, change na to it. (na is the logical opposit of na.rm)
   } else if (!is.null(na)) {
     warning("'na' is depriciated.  please use 'na.rm'.")
@@ -108,8 +107,14 @@ getenumCI2020 <- function(veris,
     warning("More than one confidence interval method specified. Using first.")
     ci.method <- ci.method[1]
   }
+  
   if (! ci.method %in% c("mcmc", "bootstrap")) {
     stop(paste0("ci.method ", ci.method, " not one of c('mcmc', 'bootstrap')."))
+  }
+  
+  if (ci.method == "mcmc" && length(intersect(c("brms", "tidybayes"), rownames(installed.packages()))) < 2) {
+    ci.method <- "bootstrap"
+    warning("ci.method set to mcmc, but 'brms' and 'tidybayes' not both installed.  updating ci.method to 'bootstrap'")
   }
   
   # create a list of enumerations to calculate 'enum' _by_
@@ -171,61 +176,60 @@ getenumCI2020 <- function(veris,
         stop(paste0("Enum ", enum, " did not resolve to any columns."))
       }
     }
-    
-    # if we aren't rocing and 'top' was set and the sample size was less than ci_n, rerun but with 'top' off
-    if (!force & !is.null(top) & top > 1) {
-      # This allows us to handle numerical/factor/character and logical enumerations
-      if (enum_type == "multinomial" | enum_type == "logical") {
-        subdf_for_n <- subdf[, enum_enums]
-        
-        if (ncol(subdf_for_n) <= 0) { stop(paste(c("No columns matched feature(s) ", enum, " using regex ", paste0("^",enum,"[.][A-Z0-9][^.]*$"), collapse=" ")))}
-        
-        # we remove unknowns because they should normally not be counted
-        if (unk == FALSE) {
-          if (short.names) {
-            subdf_for_n <- 
-              subdf_for_n <- subdf_for_n[, enum_enums][, !grepl("^(.+[.]|)(U|[A-Za-z]{1,3} - [U|u])nknown$", names(subdf_for_n))] # if short names, bla - unknown is removed. See logical section for why. - GDB 17-01-30
-          } else {
-            subdf_for_n <- subdf_for_n[, !grepl("^(.+[.]|)(U|u)nknown$", names(subdf_for_n))] # if long names, bla - unknown is kept in sample. See logical section for why. - GDB 17-01-30
-          }
+      
+    ## This entire section calculates the sample size.  We do it early so we can adjust 'top' if n < ci_n  
+    # This allows us to handle numerical/factor/character and logical enumerations
+    if (enum_type == "multinomial" | enum_type == "logical") {
+      subdf_for_n <- subdf[, enum_enums]
+      
+      if (ncol(subdf_for_n) <= 0) { stop(paste(c("No columns matched feature(s) ", enum, " using regex ", paste0("^",enum,"[.][A-Z0-9][^.]*$"), collapse=" ")))}
+      
+      # we remove unknowns because they should normally not be counted
+      if (unk == FALSE) {
+        if (short.names) {
+          subdf_for_n <- 
+            subdf_for_n <- subdf_for_n[, enum_enums][, !grepl("^(.+[.]|)(U|[A-Za-z]{1,3} - [U|u])nknown$", names(subdf_for_n))] # if short names, bla - unknown is removed. See logical section for why. - GDB 17-01-30
+        } else {
+          subdf_for_n <- subdf_for_n[, !grepl("^(.+[.]|)(U|u)nknown$", names(subdf_for_n))] # if long names, bla - unknown is kept in sample. See logical section for why. - GDB 17-01-30
         }
-        
-        # Whether to use NAs or not depends on the hypothesis being tested so we require an answer (no default)
-        if (is.null(na) & any(grep("[.]NA$", names(subdf)))) { stop("'na' must be specified if any column names end in .NA")}
-        if (!is.null(na)) {
-          if (na == FALSE) {
-            subdf_for_n <- subdf_for_n[, !grepl(".NA$", names(subdf_for_n)), ]
-          }
-        }
-        
-        # number of records that have one of our enumerations
-        n <- sum(rowSums(subdf_for_n, na.rm=TRUE) > 0, na.rm=TRUE)
-        # count of each enumeration
-      } else if (enum_type == "single_column") {
-        table_v <- table(subdf[[enum_enums]])
-        v <- as.integer(table_v)
-        names(v) <- names(table_v)
-        
-        n <- sum(v, na.rm=TRUE)
-        # remove unknowns
-        if (unk == FALSE) {
-          n <- n - sum(v[grepl("^(.+[.]|)(U|u)nknown$", names(v))], na.rm=TRUE) # Doesn't handle `Bla - unknown` as these bastardized hierarchies shouldn't be in a single character column. - gdb 17-01-30
-        }
-        
-        # remove NAs
-        if (!is.null(na)) {
-          if (na == FALSE) {
-            n <- n - sum(v[grepl("^(.+[.]|)NA$", names(v))], na.rm=TRUE)
-          }
-        }
-      } else {
-        stop("class of 'enum' column(s) was not identified, preventing summarization.")
       }
       
-      if (n < ci_n) {
-        top <- NULL
-        warning(paste0("Parameter 'top' ignored when 'n' < ", ci_n, ".  'Top' can only be used if there is a clear break where confidence intervals between two ordered records don't overlap.  Please calculate interdependance, set  'top' to the appropriate breakpoint, and use 'force=TRUE' to avoid this warning."))
+      # Whether to use NAs or not depends on the hypothesis being tested so we require an answer (no default)
+      if (is.null(na) & any(grep("[.]NA$", names(subdf_for_n)))) { stop("'na' must be specified if any column names end in .NA")}
+      if (!is.null(na)) {
+        if (na == FALSE) {
+          subdf_for_n <- subdf_for_n[, !grepl(".NA$", names(subdf_for_n)), ]
+        }
       }
+      
+      # number of records that have one of our enumerations
+      n <- sum(rowSums(subdf_for_n, na.rm=TRUE) > 0, na.rm=TRUE)
+      # count of each enumeration
+    } else if (enum_type == "single_column") {
+      table_v <- table(subdf[[enum_enums]])
+      v <- as.integer(table_v)
+      names(v) <- names(table_v)
+      
+      n <- sum(v, na.rm=TRUE)
+      # remove unknowns
+      if (unk == FALSE) {
+        n <- n - sum(v[grepl("^(.+[.]|)(U|u)nknown$", names(v))], na.rm=TRUE) # Doesn't handle `Bla - unknown` as these bastardized hierarchies shouldn't be in a single character column. - gdb 17-01-30
+      }
+      
+      # remove NAs
+      if (!is.null(na)) {
+        if (na == FALSE) {
+          n <- n - sum(v[grepl("^(.+[.]|)NA$", names(v))], na.rm=TRUE)
+        }
+      }
+    } else {
+      stop("class of 'enum' column(s) was not identified, preventing summarization.")
+    }
+      
+    # if we aren't rocing and 'top' was set and the sample size was less than ci_n, rerun but with 'top' off
+    if (!force && !is.null(top) && top > 1 && n < ci_n) {
+      top <- NULL
+      warning(paste0("Parameter 'top' ignored when 'n' < ", ci_n, ".  'Top' can only be used if there is a clear break where confidence intervals between two ordered records don't overlap.  Please calculate interdependance, set  'top' to the appropriate breakpoint, and use 'force=TRUE' to avoid this warning."))
     }
     
     # Subset to top enums
@@ -390,10 +394,10 @@ getenumCI2020 <- function(veris,
     }
     
     # apply the confidence interval.  Apply to NA's and unk separately depending on if selected. (If you try and apply CI's cart blanc to the NA/Unknowns it can error out on binding the columns)
-    if (length(ci.method) > 0) {
+    if (ci.method == "bootstrap") {
       if (nrow(enum_subchunk) > 0) {
         # subchunk <- dplyr::bind_cols(subchunk, binom::binom.confint(subchunk$x, subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
-        enum_subchunk <- cbind(enum_subchunk, binom::binom.confint(enum_subchunk$x, enum_subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
+        enum_subchunk <- cbind(enum_subchunk, data.frame(method="bootstrap"), binom::binom.confint(enum_subchunk$x, enum_subchunk$n, conf.level=ci.level, methods="bayes")[ , c(5, 6)])
       } else {
         enum_subchunk <- cbind(enum_subchunk, data.frame(method=character(), lower=numeric(), upper=numeric()))
       }
@@ -402,7 +406,7 @@ getenumCI2020 <- function(veris,
         unk_subchunk <- cbind(unk_subchunk, data.frame(method=rep(NA, nrow(unk_subchunk)), lower=rep(NA, nrow(unk_subchunk)), upper=rep(NA, nrow(unk_subchunk))))
       } else if (nrow(unk_subchunk) >0) {
         # unk_subchunk <- dplyr::bind_cols(unk_subchunk, binom::binom.confint(unk_subchunk$x, unk_subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
-        unk_subchunk <- cbind(unk_subchunk, binom::binom.confint(unk_subchunk$x, unk_subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
+        unk_subchunk <- cbind(unk_subchunk, data.frame(method="bootstrap"), binom::binom.confint(unk_subchunk$x, unk_subchunk$n, conf.level=ci.level, methods="bayes")[ , c(5, 6)])
       } else {
         unk_subchunk <- data.frame()
       }
@@ -412,14 +416,70 @@ getenumCI2020 <- function(veris,
           na_subchunk <- cbind(na_subchunk, data.frame(method=rep(NA, nrow(na_subchunk)), lower=rep(NA, nrow(na_subchunk)), upper=rep(NA, nrow(na_subchunk))))
         } else if (nrow(na_subchunk) > 0) {
           # na_subchunk <- dplyr::bind_cols(na_subchunk, binom::binom.confint(na_subchunk$x, na_subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
-          na_subchunk <- cbind(na_subchunk, binom::binom.confint(na_subchunk$x, na_subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
+          na_subchunk <- cbind(na_subchunk, data.frame(method="bootstrap"), binom::binom.confint(na_subchunk$x, na_subchunk$n, conf.level=ci.level, methods="bayes")[ , c(5, 6)])
+        } else {
+          na_subchunk <- data.frame()
+        }
+      }
+    } else if (ci.method == "mcmc") {
+      # An MCMC bayes approach to the confidence interval
+      
+      # First step is to join all the sections that need to be modeled.  That way we don't have to compile multiple models
+      subchunk_to_ci <- enum_subchunk[FALSE, ] # create an initial empty dataframe
+      if (nrow(enum_subchunk) > 0) {
+        subchunk_to_ci <- rbind(subchunk_to_ci, enum_subchunk)
+      }
+      if (!is.null(unk) && (!unk)) {
+        subchunk_to_ci <- rbind(subchunk_to_ci, unk_subchunk)
+      }
+      if (!is.null(na) && (!na)) {
+        subchunk_to_ci <- rbind(subchunk_to_ci, na_subchunk)
+      }
+      
+      # compile the model  
+      if (nrow(subchunk_to_ci) > 0 ) {
+        # I use a simple binomial model, but other options may provide better estimates:
+        # Also considered family=zero_inflated_binomial()
+        # Also considered family=beta_binomial2 from https://cran.r-project.org/web/packages/brms/vignettes/brms_customfamilies.html
+        m <- brms::brm(x | trials(n) ~ (1|enum), 
+                       data=subchunk_to_ci, 
+                       family = binomial(), 
+                       control = list(adapt_delta = .90, max_treedepth=10),
+                       silent=TRUE, refresh=0, open_progress=FALSE) # suppress most messages
+        mcmc <- tidybayes::spread_draws(m, b_Intercept, r_enum[enum,])
+        mcmc$condition_mean <- logit2prob(b_Intercept + r_enum)
+        mcmc <- tidybayes::median_qi()
+      }
+      
+      # separate the values back into their respective subchunks
+      if (nrow(enum_subchunk) > 0) {
+        enum_subchunk <- cbind(enum_subchunk, data.frame(method="mcmc", lower=mcmc$condition_mean.lower[[1:nrow(enum_subchunk)]], upper=mcmc$condition_mean.upper[[1:nrow(enum_subchunk)]]))
+        mcmc <- mcmc[(nrow(enum_subchunk)+1):nrow(mcmc), ] #remove the subchunk rows.
+      } else {
+        enum_subchunk <- cbind(enum_subchunk, data.frame(method=character(), lower=numeric(), upper=numeric()))
+      }
+      if (unk == FALSE) {
+        # unk_subchunk <- dplyr::bind_cols(unk_subchunk, data.frame(method=rep(NA, nrow(unk_subchunk)), lower=rep(NA, nrow(unk_subchunk)), upper=rep(NA, nrow(unk_subchunk))))
+        unk_subchunk <- cbind(unk_subchunk, data.frame(method=rep(NA, nrow(unk_subchunk)), lower=rep(NA, nrow(unk_subchunk)), upper=rep(NA, nrow(unk_subchunk))))
+      } else if (nrow(unk_subchunk) >0) {
+        # unk_subchunk <- dplyr::bind_cols(unk_subchunk, binom::binom.confint(unk_subchunk$x, unk_subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
+        unk_subchunk <- cbind(unk_subchunk, data.frame(method="mcmc", lower=mcmc$condition_mean.lower[[1]], upper=mcmc$condition_mean.upper[[1]]))
+        mcmc <- mcmc[2:nrow(mcmc), ] #remove the subchunk rows.
+      } else {
+        unk_subchunk <- data.frame()
+      }
+      if (!is.null(na)) {
+        if (na == FALSE) {
+          # na_subchunk <- dplyr::bind_cols(na_subchunk, data.frame(method=rep(NA, nrow(na_subchunk)), lower=rep(NA, nrow(na_subchunk)), upper=rep(NA, nrow(na_subchunk))))
+          na_subchunk <- cbind(na_subchunk, data.frame(method=rep(NA, nrow(na_subchunk)), lower=rep(NA, nrow(na_subchunk)), upper=rep(NA, nrow(na_subchunk))))
+        } else if (nrow(na_subchunk) > 0) {
+          # na_subchunk <- dplyr::bind_cols(na_subchunk, binom::binom.confint(na_subchunk$x, na_subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
+          na_subchunk <- cbind(na_subchunk, data.frame(method="mcmc", lower=mcmc$condition_mean.lower[[1]], upper=mcmc$condition_mean.upper[[1]]))
         } else {
           na_subchunk <- data.frame()
         }
       }
     }
-    
-    # 
     
     # If logical (rather than multinomial), remove all rows other than the one logical
     if (enum_type == "logical") {
@@ -439,8 +499,8 @@ getenumCI2020 <- function(veris,
     names(subchunk)[1] <- "by"
     
     if (!force & n < ci_n) {
-      subchunk$x <- NA
-      subchunk$freq <- NA
+      subchunk$x[!is.na(subchunk$n)] <- NA
+      subchunk$freq[!is.na(subchunk$n)] <- NA
     }
     
     subchunk # return
@@ -501,9 +561,12 @@ getenumCI2020 <- function(veris,
   
   if (!force) {
     if (any(chunk$n < n_floor, na.rm=TRUE)) {
-      warning(paste0("Removing all rows with n < ", n_floor, ".  ", n_floor, " is the smallest samples size appropriate for the DBIR. Use force = TRUE to avoid this removal."))
+      warning(paste0("Removing all rows with n < ", n_floor, ".  ", n_floor, " is the smallest samples size appropriate for the DBIR. Use force = TRUE to avoid this removal.  If this leaves n othing but columns with no sample size, those will be removed as well."))
     }
-    chunk[is.na(chunk$n) | chunk$n >= n_floor, ]
+    chunk <- chunk[is.na(chunk$n) | chunk$n >= n_floor, ]
+    if (all(is.na(chunk$n))) {
+      chunk <- chunk[!is.na(chunk$n), ]
+    }
   }
   
   # return

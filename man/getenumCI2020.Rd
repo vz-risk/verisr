@@ -6,7 +6,7 @@
 \usage{
 getenumCI2020(veris, enum, by = NULL, na.rm = NULL, unk = FALSE,
   short.names = TRUE, ci.method = c(), ci.level = 0.95,
-  round.freq = 5, na = NULL, top = NULL, ...)
+  round.freq = 5, na = NULL, top = NULL, force = FALSE, ...)
 }
 \arguments{
 \item{veris}{A verisr object}
@@ -27,9 +27,7 @@ The default is 'FALSE' and should rarely be overwritten.}
 name or just the last section. (i.e. action.hacking.variety.SQLi vs
 just SQLi.)}
 
-\item{ci.method}{A confidence interval method to use.  Current supported
-methods are any from binom.confint() or "multinomial".  If unsure
-which to use, use "wilson".}
+\item{ci.method}{A confidence interval method to use.  Options are "mcmc" or "bootstrap".  "bootstrap"uses the bayes process from the binom package.  "mcmc" uses a binomial model based on rstan, rstanarm, brms.}
 
 \item{ci.level}{A number from 0 to 1 representing the width of the 
 confidence interval. (default = 0.95)}
@@ -40,6 +38,8 @@ the frequency value to. (default = 5)}
 \item{na}{DEPRECIATED! Use 'na.rm' parameter.}
 
 \item{top}{Integer limiting the output to top enumerations.}
+
+\item{force}{getenumCI() will attempt to enforce sane confidence-based practices (such as hiding x and freq in low sample sizes).  Setting force to 'TRUE' will override these best practices.}
 
 \item{...}{A catch all for functions using arguments from previous
 versions of getenum.}
