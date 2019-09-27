@@ -108,7 +108,7 @@ getenumCI2020 <- function(veris,
     ci.method <- ci.method[1]
   }
   
-  if (! ci.method %in% c("mcmc", "bootstrap")) {
+  if (!is.null(ci.method) && !ci.method %in% c("mcmc", "bootstrap")) {
     stop(paste0("ci.method ", ci.method, " not one of c('mcmc', 'bootstrap')."))
   }
   
@@ -388,13 +388,13 @@ getenumCI2020 <- function(veris,
     # Because we will remove 'x' and 'freq', there must be a ci.method set if n < ci_n and force != TRUE
     if (!force & n < ci_n) {
       if (length(ci.method) <= 0) {
-        warning(paste0("ci.method must be set if 'n' < ", ci_n, " and force != TRUE.  Setting ci.method to 'mcmc'.  To avoid this warning, please set 'ci.method' to either 'mcmc' or 'bootstrap' or force=TRUE."))
-        ci.method <- "mcmc"
+        warning(paste0("ci.method must be set if 'n' < ", ci_n, " and force != TRUE.  Setting ci.method to 'bootstrap'.  To avoid this warning, please set 'ci.method' to either 'mcmc' or 'bootstrap' or force=TRUE."))
+        ci.method <- "bootstrap"
       }
     }
     
     # apply the confidence interval.  Apply to NA's and unk separately depending on if selected. (If you try and apply CI's cart blanc to the NA/Unknowns it can error out on binding the columns)
-    if (ci.method == "bootstrap") {
+    if (!is.null(ci.method) && ci.method == "bootstrap") {
       if (nrow(enum_subchunk) > 0) {
         # subchunk <- dplyr::bind_cols(subchunk, binom::binom.confint(subchunk$x, subchunk$n, conf.level=ci.level, methods=ci.method)[ , c(1, 5, 6)])
         enum_subchunk <- cbind(enum_subchunk, data.frame(method="bootstrap"), binom::binom.confint(enum_subchunk$x, enum_subchunk$n, conf.level=ci.level, methods="bayes")[ , c(5, 6)])
@@ -421,7 +421,7 @@ getenumCI2020 <- function(veris,
           na_subchunk <- data.frame()
         }
       }
-    } else if (ci.method == "mcmc") {
+    } else if (!is.null(ci.method) && ci.method == "mcmc") {
       # An MCMC bayes approach to the confidence interval
       
       # First step is to join all the sections that need to be modeled.  That way we don't have to compile multiple models
@@ -441,19 +441,21 @@ getenumCI2020 <- function(veris,
         # I use a simple binomial model, but other options may provide better estimates:
         # Also considered family=zero_inflated_binomial()
         # Also considered family=beta_binomial2 from https://cran.r-project.org/web/packages/brms/vignettes/brms_customfamilies.html
-        m <- brms::brm(x | trials(n) ~ (1|enum), 
+        suppressWarnings(requireNamespace('brms'))
+        m <- suppressWarnings(brms::brm(x | trials(n) ~ (1|enum), 
                        data=subchunk_to_ci, 
                        family = binomial(), 
                        control = list(adapt_delta = .90, max_treedepth=10),
-                       silent=TRUE, refresh=0, open_progress=FALSE) # suppress most messages
+                       silent=TRUE, refresh=0, open_progress=FALSE)) # suppress most messages
         mcmc <- tidybayes::spread_draws(m, b_Intercept, r_enum[enum,])
-        mcmc$condition_mean <- logit2prob(b_Intercept + r_enum)
-        mcmc <- tidybayes::median_qi()
+        mcmc$condition_mean <- logit2prob(mcmc$b_Intercept + mcmc$r_enum)
+        mcmc <- tidybayes::median_qi(mcmc)
       }
       
       # separate the values back into their respective subchunks
       if (nrow(enum_subchunk) > 0) {
-        enum_subchunk <- cbind(enum_subchunk, data.frame(method="mcmc", lower=mcmc$condition_mean.lower[[1:nrow(enum_subchunk)]], upper=mcmc$condition_mean.upper[[1:nrow(enum_subchunk)]]))
+        #enum_subchunk <- cbind(enum_subchunk, data.frame(method="mcmc", lower=mcmc$condition_mean.lower[1:nrow(enum_subchunk)], upper=mcmc$condition_mean.upper[1:nrow(enum_subchunk)]))
+        enum_subchunk <- cbind(enum_subchunk, data.frame(method="mcmc", lower=mcmc$condition_mean.lower[match(enum_subchunk$enum, mcmc$enum)], upper=mcmc$condition_mean.upper[match(enum_subchunk$enum, mcmc$enum)]))
         mcmc <- mcmc[(nrow(enum_subchunk)+1):nrow(mcmc), ] #remove the subchunk rows.
       } else {
         enum_subchunk <- cbind(enum_subchunk, data.frame(method=character(), lower=numeric(), upper=numeric()))

@@ -1,3 +1,6 @@
+version 2.3.1.0009:
+* bug fixes
+
 version 2.3.1.0008:
 * some testing of CI changes.
 * added MCMC option to CI method - UNTESTED
