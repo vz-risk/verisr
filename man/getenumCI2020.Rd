@@ -5,8 +5,9 @@
 \title{Summarizes veris enumerations from verisr objects}
 \usage{
 getenumCI2020(veris, enum, by = NULL, na.rm = NULL, unk = FALSE,
-  short.names = TRUE, ci.method = c(), ci.level = 0.95,
-  round.freq = 5, na = NULL, top = NULL, force = FALSE, ...)
+  short.names = TRUE, ci.method = c(), cred.mass = 0.95,
+  ci.level = NULL, round.freq = 5, na = NULL, top = NULL,
+  force = FALSE, ...)
 }
 \arguments{
 \item{veris}{A verisr object}
@@ -29,13 +30,16 @@ just SQLi.)}
 
 \item{ci.method}{A confidence interval method to use.  Options are "mcmc" or "bootstrap".  "bootstrap"uses the bayes process from the binom package.  "mcmc" uses a binomial model based on rstan, rstanarm, brms.}
 
-\item{ci.level}{A number from 0 to 1 representing the width of the 
-confidence interval. (default = 0.95)}
+\item{cred.mass}{the amount of probability mass that will be contained in 
+reported credible intervals. This argument fills a similar role as 
+conf.level in \code{\link{binom.test}}.}
+
+\item{ci.level}{DEPRECIATED! same as \code{cred.mass}.}
 
 \item{round.freq}{An integer indicating how many places to round
 the frequency value to. (default = 5)}
 
-\item{na}{DEPRECIATED! Use 'na.rm' parameter.}
+\item{na}{DEPRECIATED! Use '\code{na.rm}' parameter.}
 
 \item{top}{Integer limiting the output to top enumerations.}
 
