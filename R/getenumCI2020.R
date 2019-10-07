@@ -275,6 +275,7 @@ getenumCI2020 <- function(veris,
         # order the enumerations and take the top ones
         # top enums are the actual top enums, plus 'Other', 'Unknown', and potentially NA
         top_enums <- names(enum_counts[rank(-enum_counts, ties.method="min") <= top]) # , grep("^(.+[.]|)(O|o)ther$", enum_enums, value=TRUE)
+        top_enums <- intersect(top_enums, names(enum_counts[enum_counts > 0])) # attempt 
         if (!is.null(unk)) {
           if (unk == FALSE) {
             top_enums <- c(top_enums, grep("^(.+[.]|)(U|u)nknown$", enum_enums, value=TRUE))
@@ -293,7 +294,14 @@ getenumCI2020 <- function(veris,
           if (enum_type == "single_column") {
             subdf[grepl(paste0("^", paste(not_top_enums, collapse="|")), subdf[[enum_enums]]), enum_enums] <- "Other"
           } else {
-            subdf[[paste0(enum, ".Other")]] <- unlist(apply(subdf[, not_top_enums], MARGIN=1, any))
+            if (length(intersect(not_top_enums, names(subdf))) <= 0) {
+              subdf[[paste0(enum, ".Other")]] <- FALSE
+            } else if (length(intersect(not_top_enums, names(subdf))) == 1) {
+              subdf[[paste0(enum, ".Other")]] <- subdf[[not_top_enums]] # this likely is assigning <enum>.Other to itself, but just in case we'll define it generically.
+            } else {
+              subdf[[paste0(enum, ".Other")]] <- unlist(apply(subdf[, not_top_enums], MARGIN=1, any))
+              
+            }
             enum_enums <- c(intersect(top_enums, enum_enums), paste0(enum, ".Other"))
           }
         }

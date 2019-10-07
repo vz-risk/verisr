@@ -1,3 +1,7 @@
+version 2.3.1.0011:
+* Fixed bug where no not_top_enums causes a failure. 
+* Also filtered '0's out of top enums so that if the top enums goes town to zero-count enums, they are not shown (except as a '0' for 'Other')
+
 version 2.3.1.0010:
 * fixed bug where cred.mass not respected for ci.method="mcmc"
 
