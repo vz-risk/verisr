@@ -1,3 +1,6 @@
+version 2.3.1.0012:
+* Attempted to mitigate a bug where brms rewrites enum names, making it hard to rejoin the mcmc analysis to the original data.
+
 version 2.3.1.0011:
 * Fixed bug where no not_top_enums causes a failure. 
 * Also filtered '0's out of top enums so that if the top enums goes town to zero-count enums, they are not shown (except as a '0' for 'Other')

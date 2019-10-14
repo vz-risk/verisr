@@ -453,13 +453,17 @@ getenumCI2020 <- function(veris,
         # Also considered family=zero_inflated_binomial()
         # Also considered family=beta_binomial2 from https://cran.r-project.org/web/packages/brms/vignettes/brms_customfamilies.html
         #suppressWarnings(requireNamespace('brms'))
-        suppressWarnings(require('brms'))
+        suppressWarnings(require('rstan')) # because rstan has issues if not loaded.
         m <- suppressWarnings(brms::brm(x | trials(n) ~ (1|enum), 
                        data=subchunk_to_ci, 
                        family = binomial(), 
                        control = list(adapt_delta = .90, max_treedepth=10),
                        silent=TRUE, refresh=0, open_progress=FALSE)) # suppress most messages
         mcmc <- tidybayes::spread_draws(m, b_Intercept, r_enum[enum,])
+        # brms rewrites the column names. We're going to _try_ and fix that by mapping them back to the chunk enums.
+        # this may or may not work since we can't be _sure_ they sort the same. 
+        # As such, this is a hack until a mapping can be extracted from the model object or the same function used internally can be used to create a mapping.
+        mcmc$enum <- plyr::mapvalues(enum, sort(unique(enum)), sort(levels(chunk$enum)))
         mcmc$condition_mean <- logit2prob(mcmc$b_Intercept + mcmc$r_enum)
         mcmc <- tidybayes::median_qi(mcmc, .width=cred.mass)
       }
