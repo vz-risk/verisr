@@ -460,12 +460,14 @@ getenumCI2020 <- function(veris,
                        control = list(adapt_delta = .90, max_treedepth=10),
                        silent=TRUE, refresh=0, open_progress=FALSE)) # suppress most messages
         mcmc <- tidybayes::spread_draws(m, b_Intercept, r_enum[enum,])
+        mcmc$condition_mean <- logit2prob(mcmc$b_Intercept + mcmc$r_enum)
+        mcmc <- tidybayes::median_qi(mcmc, .width=cred.mass)
         # brms rewrites the column names. We're going to _try_ and fix that by mapping them back to the chunk enums.
         # this may or may not work since we can't be _sure_ they sort the same. 
         # As such, this is a hack until a mapping can be extracted from the model object or the same function used internally can be used to create a mapping.
-        mcmc$enum <- plyr::mapvalues(enum, sort(unique(enum)), sort(levels(chunk$enum)))
-        mcmc$condition_mean <- logit2prob(mcmc$b_Intercept + mcmc$r_enum)
-        mcmc <- tidybayes::median_qi(mcmc, .width=cred.mass)
+        #mcmc$enum <- plyr::mapvalues(enum, sort(unique(enum)), sort(levels(chunk$enum)))
+        # Per https://discourse.mc-stan.org/t/brms-non-standard-variable-name-modification/11412
+        mcmc$enum <- plyr::mapvalues(mcmc$enum, gsub("[ \t\r\n]", ".", as.character(unique(subchunk_to_ci$enum))), as.character(unique(subchunk_to_ci$enum)))
       }
       
       # separate the values back into their respective subchunks
@@ -564,7 +566,7 @@ getenumCI2020 <- function(veris,
       chunk$enum <- factor(chunk$enum, levels=rev(unique(chunk$enum)))
     } else {
       chunk <- chunk[order(-chunk$freq), ]
-      chunk$enum <- factor(chunk$enum, levels=rev(unique(chunk$enum)))
+      chunk$enum <- factor(chunk$enum, levels=unique(chunk$enum))
     }
   }
   
