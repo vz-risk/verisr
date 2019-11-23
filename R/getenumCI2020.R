@@ -344,12 +344,16 @@ getenumCI2020 <- function(veris,
         subdf <- do.call(cbind, lapply(unique(short_names), function(y) { # bind the list of columns returned by lapply
           dups <- grep(paste0("^(",y,")$"), short_names)
           if (length(dups) > 1) {
-            feature <- apply(subdf[ , grep(paste0("^(",y,")$"), short_names)], MARGIN=1, any) # 'grep' selects columns with the name, apply checks if any of the row are true
+            #feature <- apply(subdf[ , grep(paste0("^(",y,")$"), short_names)], MARGIN=1, any) # 'grep' selects columns with the name, apply checks if any of the row are true
+            feature <- apply(subdf[ , which(y == short_names)], MARGIN=1, any)  # replaced 'grep' with 'which' due to some 'y' containing regex control characters.
           } else {
-            feature <- subdf[ , grep(paste0("^(",y,")$"), short_names)]
+            #feature <- subdf[ , grep(paste0("^(",y,")$"), short_names)]
+            feature <- subdf[, which(y == short_names)] # replaced 'grep' with 'which' due to some 'y' containing regex control characters.
           }
           feature <- data.frame(feature)
-          names(feature) <- y
+          if (ncol(feature) > 0) {
+            names(feature) <- y
+          }
           feature
         }))
       }
@@ -412,7 +416,19 @@ getenumCI2020 <- function(veris,
     # apply the confidence interval.  Apply to NA's and unk separately depending on if selected. (If you try and apply CI's cart blanc to the NA/Unknowns it can error out on binding the columns)
     if (!is.null(ci.method) && ci.method == "bootstrap") {
       if (nrow(enum_subchunk) > 0) {
-        enum_subchunk <- cbind(enum_subchunk, data.frame(method="bootstrap"), binom::binom.confint(enum_subchunk$x, enum_subchunk$n, conf.level=cred.mass, methods="bayes")[ , c(5, 6)])
+        # replacing the one-liner with this because binom.bayes has a bug that errors if the ends (0 or n) are included in x and number of rows > 3
+        enum_subchunk[['method']] <- "bootstrap"
+        enum_subchunk[['lower']] <- NA
+        enum_subchunk[['upper']] <- NA
+        enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, c('lower', 'upper') ] <- binom::binom.bayes(as.integer(enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, 'x' ]), as.integer(enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, 'n' ], conf.level=cred.mass))[ , c(7, 8)]
+        ## Commenting out the 'if' blocks as I _think_ they are unnecessary
+        #if (0 %in% enum_subchunk$x) {
+        enum_subchunk[enum_subchunk$x == 0, c('lower', 'upper')] <- binom::binom.bayes(0, n, conf.level=cred.mass)[, c(7, 8)]
+        #}
+        #if (n %in% enum_subchunk$x) {
+        enum_subchunk[enum_subchunk$x == n, c('lower', 'upper')] <- binom::binom.bayes(n, n, conf.level=0.95)[, c(7, 8)]
+        #}
+        # enum_subchunk <- cbind(enum_subchunk, data.frame(method="bootstrap"), binom::binom.confint(enum_subchunk$x, enum_subchunk$n, conf.level=cred.mass, methods="bayes")[ , c(5, 6)])
       } else {
         enum_subchunk <- cbind(enum_subchunk, data.frame(method=character(), lower=numeric(), upper=numeric()))
       }
@@ -467,7 +483,7 @@ getenumCI2020 <- function(veris,
         # As such, this is a hack until a mapping can be extracted from the model object or the same function used internally can be used to create a mapping.
         #mcmc$enum <- plyr::mapvalues(enum, sort(unique(enum)), sort(levels(chunk$enum)))
         # Per https://discourse.mc-stan.org/t/brms-non-standard-variable-name-modification/11412
-        mcmc$enum <- plyr::mapvalues(mcmc$enum, gsub("[ \t\r\n]", ".", as.character(unique(subchunk_to_ci$enum))), as.character(unique(subchunk_to_ci$enum)))
+        mcmc$enum <- plyr::mapvalues(mcmc$enum, gsub("[ \t\r\n]", ".", as.character(unique(subchunk_to_ci$enum))), as.character(unique(subchunk_to_ci$enum))) # it would be nice to not have to import plyr, but oh well. - GDB 191123
       }
       
       # separate the values back into their respective subchunks

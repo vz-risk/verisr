@@ -1,3 +1,7 @@
+version 2.3.1.0014:
+* mitigated an error in binom.bayes that manifests itself in getenumCI* when an end (0 or n) exists in x and there are more than 3 rows in the subchunk passed to binom.bayes.
+* found an issue with regex control characters in the end of the enum chain.  Mitigated it in getenumCI2019 and getenumCI2020, but it may exist elsewhere.  It has recently become an issue due to the veris 1.3.4 enumerations "asset.cloud.External Cloud Asset(s)" and "asset.cloud.On-Premise Asset(s)".
+
 version 2.3.1.0013:
 * more explicit mitigation of enum names issue based on feedback from brms author
 

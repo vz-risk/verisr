@@ -196,9 +196,11 @@ getenumCI2019 <- function(veris,
         subdf <- do.call(cbind, lapply(unique(short_names), function(y) { # bind the list of columns returned by lapply
           dups <- grep(paste0("^(",y,")$"), short_names)
           if (length(dups) > 1) {
-            feature <- apply(subdf[ , grep(paste0("^(",y,")$"), short_names)], MARGIN=1, any) # 'grep' selects columns with the name, apply checks if any of the row are true
+            #feature <- apply(subdf[ , grep(paste0("^(",y,")$"), short_names)], MARGIN=1, any) # 'grep' selects columns with the name, apply checks if any of the row are true
+            feature <- apply(subdf[ , which(y == short_names)], MARGIN=1, any) # replaced 'grep' with 'which' due to some 'y' containing regex control characters.
           } else {
-            feature <- subdf[ , grep(paste0("^(",y,")$"), short_names)]
+            feature <- subdf[ , which(y == short_names)] # replaced 'grep' with 'which' due to some 'y' containing regex control characters.
+            #feature <- subdf[ , grep(paste0("^(",y,")$"), short_names)]
           }
           feature <- data.frame(feature)
           names(feature) <- y
