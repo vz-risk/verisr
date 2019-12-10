@@ -420,7 +420,9 @@ getenumCI2020 <- function(veris,
         enum_subchunk[['method']] <- "bootstrap"
         enum_subchunk[['lower']] <- NA
         enum_subchunk[['upper']] <- NA
-        enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, c('lower', 'upper') ] <- binom::binom.bayes(as.integer(enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, 'x' ]), as.integer(enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, 'n' ], conf.level=cred.mass))[ , c(7, 8)]
+        if (any(enum_subchunk$x != n & enum_subchunk$x != 0)) { # check if any aren't 0 or n. otherwise, calculating a CI will fail.
+          enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, c('lower', 'upper') ] <- binom::binom.bayes(as.integer(enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, 'x' ]), as.integer(enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, 'n' ], conf.level=cred.mass))[ , c(7, 8)]
+        }  
         ## Commenting out the 'if' blocks as I _think_ they are unnecessary
         #if (0 %in% enum_subchunk$x) {
         enum_subchunk[enum_subchunk$x == 0, c('lower', 'upper')] <- binom::binom.bayes(0, n, conf.level=cred.mass)[, c(7, 8)]
