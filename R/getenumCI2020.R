@@ -154,7 +154,8 @@ getenumCI2020 <- function(veris,
   #  instead, we just get a list of them using lapply and then rbind
   #  on that list.
   # TODO: Parallelize this as time scales linearly with the number of 'by_enums'
-  chunk <- do.call(rbind, lapply(by_enums, function(x) {
+  #chunk <- do.call(rbind, lapply(by_enums, function(x) { # switching as you can end up with the wrong number of columns if CI protection triggers on one subchunk and not another - GDB 201216
+  chunks_list <- lapply(by_enums, function(x) {
     
     # subset DF to just the portion we're currently dealing with
     if (by_type == "multinomial") {
@@ -408,7 +409,7 @@ getenumCI2020 <- function(veris,
     # Because we will remove 'x' and 'freq', there must be a ci.method set if n < ci_n and force != TRUE
     if (!force & n < ci_n) {
       if (length(ci.method) <= 0) {
-        warning(paste0("ci.method must be set if 'n' < ", ci_n, " and force != TRUE.  Setting ci.method to 'bootstrap'.  To avoid this warning, please set 'ci.method' to either 'mcmc' or 'bootstrap' or force=TRUE."))
+        warning(paste0("ci.method must be set if 'n' < ", ci_n, " and force != TRUE.  Setting ci.method to 'bootstrap' for enumeration ", x, ".  To avoid this warning, please set 'ci.method' to either 'mcmc' or 'bootstrap' or force=TRUE."))
         ci.method <- "bootstrap"
       }
     }
@@ -537,7 +538,21 @@ getenumCI2020 <- function(veris,
     }
     
     subchunk # return
-  }))
+  })
+  
+  ## Since some chunks may be below ci_min
+  #if (any(unlist(lapply(chunks_list, function(l) {"lower" %in% names(l)})))) {
+  chunks_list <- lapply(chunks_list, function(subchunk) {
+    if (!"lower" %in% names(subchunk)) {
+      subchunk$method <- "none"
+      subchunk$lower <- NA_real_
+      subchunk$upper <- NA_real_
+    }
+    subchunk
+  })
+  #}
+
+  chunk <- do.call(rbind, chunks_list) # now that we've fixed any column issues, bind the columns again
   
   # if there was no 'by', delete the 'by' column
   if (by_type != "multinomial" && by_type != "single_column") {

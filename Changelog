@@ -1,3 +1,6 @@
+version 2.3.1.0016:
+* Fixed bug realted to some 'by' levels not meeting minimum sample level and some meeting it.  Those that meet it will have method set to 'none' and upper/lower set to NA.  (ci.method can always be set manually to ensure all rows have a confidence interval.)
+
 version 2.3.1.0015:
 * Fixed a bug in getenumCI2020() that addresses the hack to avoid the binom.bayes error from 0014.  (All X being either 0 or n caused error.)
 
