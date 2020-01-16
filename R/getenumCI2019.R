@@ -82,6 +82,8 @@ getenumCI2019 <- function(veris,
                       na = NULL, 
                       ...) {
   
+  lifecycle::deprecate_warn("version 2.3.1.0005", "verisr::getenumCI2019()", "verisr::getenumCI2020()")
+  
   # even though the parameter is 'na.rm', we still use 'na' internally.
   if (!is.null(na.rm)) {
     na = !na.rm  # if na.rm is set, change na to it. (na is the logical opposit of na.rm)
@@ -100,6 +102,11 @@ getenumCI2019 <- function(veris,
   if (length(ci.method) > 1) {
     warning("More than one confidence interval method specified. Using first.")
     ci.method <- ci.method[1]
+  }
+  
+  # because getenumCI2020 accepts 'bootstrap' to run binom.bayes, setting 2019 also up to accept it.
+  if (length(ci.method) > 1 && ci.method == "bootstrap") {
+    ci.method <- "bayes"
   }
   
   # create a list of enumerations to calculate 'enum' _by_

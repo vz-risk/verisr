@@ -7,7 +7,7 @@
 getenumCI2020(veris, enum, by = NULL, na.rm = NULL, unk = FALSE,
   short.names = TRUE, ci.method = c(), cred.mass = 0.95,
   ci.level = NULL, round.freq = 5, na = NULL, top = NULL,
-  force = FALSE, ...)
+  force = FALSE, quietly = FALSE, ...)
 }
 \arguments{
 \item{veris}{A verisr object}
@@ -44,6 +44,8 @@ the frequency value to. (default = 5)}
 \item{top}{Integer limiting the output to top enumerations.}
 
 \item{force}{getenumCI() will attempt to enforce sane confidence-based practices (such as hiding x and freq in low sample sizes).  Setting force to 'TRUE' will override these best practices.}
+
+\item{quietly}{When TRUE, suppress all warnings and messages.  This is helpful when getenumCI is used in a larger script or markdown document.}
 
 \item{...}{A catch all for functions using arguments from previous
 versions of getenum.}

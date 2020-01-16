@@ -5,6 +5,12 @@ This package is to support data analysis within the VERIS framework (<http://ver
 
 This package has two purposes. First is to convert one or more directories of VERIS (JSON) files into a usable object (in this version it is currently a data.table, but I hope to move to a dplyr object). Second, it offers a set of convenience functions for doing basic information retrieval from the object.
 
+### News
+ * As of 1/1/2020, we have broken `verisr::getenumCI()` (the primary veris analysis function), into two `verisr::getenumCI2019()` and `verisr::getenumCI2020()`.  `verisr::getenumCI2019()` is the current version as of 2019.  However, during 2020 we will transition to `verisr::getenumCI2020()` as the primary analysis function.   `verisr::getenumCI()` currently still calls `verisr::getenumCI2019()`, but will be transitioned to call `verisr::getenumCI2020()` with version 2.3.2 in Fall, 2020.  
+ 
+  `verisr::getenumCI2020()` is significantly different from the 2019 and previous versions in that it makes confidence intervals more prominent and adds 'guard rails' to small samples.  It provides two confidence interval methods: "bootstrap" (based on `binom::binom.bayes()`) and "mcmc" (based on a jags monte carlo model).  When sample size falls below 30, it will set the `x` and `freq` columns to `NA` prevent decision making based on proportions of overly-large confidence intervals.  It will also remove all rows with sample size < 5.  Both of these behaviors can cause negative effects for code expecting rows > 0 or `x`/`freq` to not be `NA`. 
+   
+### Installation  
 Install it from straight from github:
 
 ``` {.r}
@@ -12,6 +18,8 @@ Install it from straight from github:
 devtools::install_github("vz-risk/verisr")
 ```
 
+
+### Analysis  
 To begin, load the package and point it at a directory of JSON files storing VERIS data.
 
 ``` {.r}

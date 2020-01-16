@@ -48,6 +48,7 @@
 #' @param na DEPRECIATED! Use '\code{na.rm}' parameter.
 #' @param ci.level DEPRECIATED! same as \code{cred.mass}.
 #' @param force getenumCI() will attempt to enforce sane confidence-based practices (such as hiding x and freq in low sample sizes).  Setting force to 'TRUE' will override these best practices.
+#' @param quietly When TRUE, suppress all warnings and messages.  This is helpful when getenumCI is used in a larger script or markdown document.
 #' @param ... A catch all for functions using arguments from previous
 #'     versions of getenum.
 #' @return A data frame summarizing the enumeration
@@ -86,6 +87,7 @@ getenumCI2020 <- function(veris,
                       na = NULL, 
                       top = NULL,
                       force = FALSE,
+                      quietly = FALSE,
                       ...) {
   # Below this value for 'n', apply ci best practices from https://github.com/vz-risk/dbir-private/issues/43 unless force = TRUE
   ci_n <- 30 # chosen semi-arbitrarily, but it is roughly where frequentist normal approximations break down.
@@ -95,7 +97,7 @@ getenumCI2020 <- function(veris,
   if (!is.null(na.rm)) {
     na = !na.rm  # if na.rm is set, change na to it. (na is the logical opposit of na.rm)
   } else if (!is.null(na)) {
-    warning("'na' is depriciated.  please use 'na.rm'.")
+    if (!quietly) { warning("'na' is depriciated.  please use 'na.rm'.") }
   }
   
   # legacy veris objects are data tables, however data tables cause problems.
@@ -112,7 +114,7 @@ getenumCI2020 <- function(veris,
   
   # because we aren't keeping the 'method' and don't want to duplicate rows for each method, only 1 allowed.
   if (length(ci.method) > 1) {
-    warning("More than one confidence interval method specified. Using first.")
+    if (!quietly) { warning("More than one confidence interval method specified. Using first.") }
     ci.method <- ci.method[1]
   }
   
@@ -122,7 +124,7 @@ getenumCI2020 <- function(veris,
   
   if (ci.method == "mcmc" && length(intersect(c("brms", "tidybayes"), rownames(installed.packages()))) < 2) {
     ci.method <- "bootstrap"
-    warning("ci.method set to mcmc, but 'brms' and 'tidybayes' not both installed.  updating ci.method to 'bootstrap'")
+    if (!quietly) { warning("ci.method set to mcmc, but 'brms' and 'tidybayes' not both installed.  updating ci.method to 'bootstrap'") }
   }
   
   # create a list of enumerations to calculate 'enum' _by_
@@ -138,7 +140,7 @@ getenumCI2020 <- function(veris,
         by_type <- "single_column"
         # by_class <- class(by_enums)
       } else {
-        warning(paste0("No column matching 'by' value ", by, ". Ignoring 'by' value."))
+        if (!quietly) { warning(paste0("No column matching 'by' value ", by, ". Ignoring 'by' value.")) }
         by_enums <- c(NA)
         by_type <- "none"
         # by_class <- "character"
@@ -238,17 +240,18 @@ getenumCI2020 <- function(veris,
     # if we aren't rocing and 'top' was set and the sample size was less than ci_n, rerun but with 'top' off
     if (!force && !is.null(top) && top > 1 && n < ci_n) {
       top <- NULL
-      warning(paste0("Parameter 'top' ignored when 'n' < ", ci_n, ".  'Top' can only be used if there is a clear break where confidence intervals between two ordered records don't overlap.  Please calculate interdependance, set  'top' to the appropriate breakpoint, and use 'force=TRUE' to avoid this warning."))
+      if (!quietly) { warning(paste0("Parameter 'top' ignored when 'n' < ", ci_n, ".  'Top' can only be used if there is a clear break where confidence intervals between two ordered records don't overlap.  Please calculate interdependance, set  'top' to the appropriate breakpoint, and use 'force=TRUE' to avoid this warning.")) }
     }
     
     # Subset to top enums
     if (!is.null(top)) {
       if (top < 1) {
-        stop(paste0("Top must be 1 or greater, but is (", top, ")."))
+        if (!quietly) { warning(paste0("Top must be 1 or greater, but is (", top, "). Setting top to NULL.")) }
+        top <- NULL
       }
       
       if (enum_type == "logical") {
-        warning(paste0("Parameter 'top' incompatible with single logical column enumeration ", enum_enums, ". Skipping filtering to top."))
+        if (!quietly) { warning(paste0("Parameter 'top' incompatible with single logical column enumeration ", enum_enums, ". Skipping filtering to top.")) }
 
       } else {
         # start by getting a count of each enumeration
@@ -409,7 +412,7 @@ getenumCI2020 <- function(veris,
     # Because we will remove 'x' and 'freq', there must be a ci.method set if n < ci_n and force != TRUE
     if (!force & n < ci_n) {
       if (length(ci.method) <= 0) {
-        warning(paste0("ci.method must be set if 'n' < ", ci_n, " and force != TRUE.  Setting ci.method to 'bootstrap' for enumeration ", x, ".  To avoid this warning, please set 'ci.method' to either 'mcmc' or 'bootstrap' or force=TRUE."))
+        if (!quietly) { warning(paste0("ci.method must be set if 'n' < ", ci_n, " and force != TRUE.  Setting ci.method to 'bootstrap' for enumeration ", x, ".  To avoid this warning, please set 'ci.method' to either 'mcmc' or 'bootstrap' or force=TRUE.")) }
         ci.method <- "bootstrap"
       }
     }
@@ -609,7 +612,7 @@ getenumCI2020 <- function(veris,
   
   if (!force) {
     if (any(chunk$n < n_floor, na.rm=TRUE)) {
-      warning(paste0("Removing all rows with n < ", n_floor, ".  ", n_floor, " is the smallest samples size appropriate for the DBIR. Use force = TRUE to avoid this removal.  If this leaves n othing but columns with no sample size, those will be removed as well."))
+      if (!quietly) { warning(paste0("Removing all rows with n < ", n_floor, ".  ", n_floor, " is the smallest samples size appropriate for the DBIR. Use force = TRUE to avoid this removal.  If this leaves n othing but columns with no sample size, those will be removed as well.")) }
     }
     chunk <- chunk[is.na(chunk$n) | chunk$n >= n_floor, ]
     if (all(is.na(chunk$n))) {
