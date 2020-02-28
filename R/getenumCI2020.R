@@ -258,7 +258,22 @@ getenumCI2020 <- function(veris,
         if (enum_type == "single_column") {
           enum_counts <- table(subdf[[enum_enums]])
         } else if (enum_type == "multinomial") {
-          enum_counts <- colSums(subdf[ , enum_enums])
+          if (short.names) {
+            # convert to short names and keep mapping
+            name_mapping <- data.frame(full_name = enum_enums, stringsAsFactors = FALSE)
+            name_mapping[["short_name"]] <- gsub('^.*[.]([^.]+$)', "\\1", name_mapping[["full_name"]])
+            # iterate over unique short names and get counts for them
+            short_names <- unique(name_mapping$short_name)
+            enum_counts <- unlist(lapply(short_names, function(s) {
+              ret <- subdf[, name_mapping[name_mapping$short_name == s, ][["full_name"]]]
+              ret <- apply(ret, MARGIN=1, any)
+              ret <- sum(ret, na.rm=TRUE)
+              ret
+            }))
+            names(enum_counts) <- short_names 
+          } else {
+            enum_counts <- colSums(subdf[ , enum_enums]) # BUG: This does not sum same-cols in short-name mode.
+          }
         } else {
           stop("class of 'enum' column(s) was not identified, preventing filtering of top items and further processing")
         }
@@ -279,7 +294,10 @@ getenumCI2020 <- function(veris,
         # order the enumerations and take the top ones
         # top enums are the actual top enums, plus 'Other', 'Unknown', and potentially NA
         top_enums <- names(enum_counts[rank(-enum_counts, ties.method="min") <= top]) # , grep("^(.+[.]|)(O|o)ther$", enum_enums, value=TRUE)
-        top_enums <- intersect(top_enums, names(enum_counts[enum_counts > 0])) # attempt 
+        top_enums <- intersect(top_enums, names(enum_counts[enum_counts > 0])) # attempt to remove zero from top counts
+        if (short.names) {
+          top_enums <- name_mapping[name_mapping$short_name %in% top_enums, ][["full_name"]]
+        }
         if (!is.null(unk)) {
           if (unk == FALSE) {
             top_enums <- c(top_enums, grep("^(.+[.]|)(U|u)nknown$", enum_enums, value=TRUE))

@@ -1,3 +1,6 @@
+version 2.3.1.0019:
+* Fixed a bug in getenumCI2020() when using 'top=TRUE', 'short.names=TRUE' and a wild card enum (.e.g "action.*.variety").  This would effectively move counts from a top enum to 'Other'.
+
 version 2.3.1.0018:
 * Set getenumCI2019 up to accept ci.method = "bootstrap" to help with getenumCI2020 compatibility.
 
