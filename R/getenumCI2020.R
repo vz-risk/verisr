@@ -266,7 +266,9 @@ getenumCI2020 <- function(veris,
             short_names <- unique(name_mapping$short_name)
             enum_counts <- unlist(lapply(short_names, function(s) {
               ret <- subdf[, name_mapping[name_mapping$short_name == s, ][["full_name"]]]
-              ret <- apply(ret, MARGIN=1, any)
+              if (!is.null(ncol(ret))) { # if it's a vector and ncol is null, you can skip applying
+                ret <- apply(ret, MARGIN=1, any)
+              }
               ret <- sum(ret, na.rm=TRUE)
               ret
             }))
