@@ -297,7 +297,7 @@ getenumCI2020 <- function(veris,
         # top enums are the actual top enums, plus 'Other', 'Unknown', and potentially NA
         top_enums <- names(enum_counts[rank(-enum_counts, ties.method="min") <= top]) # , grep("^(.+[.]|)(O|o)ther$", enum_enums, value=TRUE)
         top_enums <- intersect(top_enums, names(enum_counts[enum_counts > 0])) # attempt to remove zero from top counts
-        if (short.names) {
+        if (enum_type == "multinomial" && short.names) {
           top_enums <- name_mapping[name_mapping$short_name %in% top_enums, ][["full_name"]]
         }
         if (!is.null(unk)) {
