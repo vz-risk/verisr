@@ -566,7 +566,9 @@ getenumCI2020 <- function(veris,
   ## Since some chunks may be below ci_min
   #if (any(unlist(lapply(chunks_list, function(l) {"lower" %in% names(l)})))) {
   chunks_list <- lapply(chunks_list, function(subchunk) {
-    if (!"lower" %in% names(subchunk)) {
+    if (nrow(subchunk) == 0) { # handles zero values
+      subchunk <- data.frame(by = factor(), x = integer(), n = integer(), freq = numeric(), method = character(), lower = numeric(), upper = numeric())
+    } else if (!"lower" %in% names(subchunk)) { # handles some values but not enough
       subchunk$method <- "none"
       subchunk$lower <- NA_real_
       subchunk$upper <- NA_real_

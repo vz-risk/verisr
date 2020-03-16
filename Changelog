@@ -1,3 +1,6 @@
+version 2.3.1.0022:
+* Added a 3 lines to catch an edge case in getenumCI2020().
+
 version 2.3.1.0021:
 * Fixed a bug in the fix.
 
