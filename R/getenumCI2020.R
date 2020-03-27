@@ -183,6 +183,11 @@ getenumCI2020 <- function(veris,
         } else {
           enum_type <- "single_column"
         }
+      } else if (length(enum_enums) > 1) {
+        stop(paste0("Enum ", enum, " resolves to multiple logical columns with a single logical enumeration.",
+        "  This is a known limitation of getenumCI.  ",
+        "  Remove the enumeration at the end and instead filter the output of getenumCI to the enumeration of interest."))
+        enum_type <- "multinomial"
       } else {
         stop(paste0("Enum ", enum, " did not resolve to any columns."))
       }
