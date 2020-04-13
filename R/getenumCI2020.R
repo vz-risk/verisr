@@ -127,6 +127,11 @@ getenumCI2020 <- function(veris,
     if (!quietly) { warning("ci.method set to mcmc, but 'brms' and 'tidybayes' not both installed.  updating ci.method to 'bootstrap'") }
   }
   
+  if (top < 1) {
+    if (!quietly) { warning(paste0("Top must be 1 or greater, but is (", top, "). Setting top to NULL.")) }
+    top <- NULL
+  }
+  
   # create a list of enumerations to calculate 'enum' _by_
   if (!is.null(by)) {
     by_enums <- grep(paste0("^",by,"[.][A-Z0-9][^.]*$"), names(df), value=TRUE)
@@ -250,10 +255,6 @@ getenumCI2020 <- function(veris,
     
     # Subset to top enums
     if (!is.null(top)) {
-      if (top < 1) {
-        if (!quietly) { warning(paste0("Top must be 1 or greater, but is (", top, "). Setting top to NULL.")) }
-        top <- NULL
-      }
       
       if (enum_type == "logical") {
         if (!quietly) { warning(paste0("Parameter 'top' incompatible with single logical column enumeration ", enum_enums, ". Skipping filtering to top.")) }
