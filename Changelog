@@ -1,3 +1,10 @@
+version 2.3.1.0024:
+* Added hypothesis testing functions:
+  * test_veris_hypothsis()
+  * test_veris_proportion()
+  * test_veris_consistency()
+  * test_veris_time_stability()
+
 version 2.3.1.0023:
 * Added more descriptive error for an edge case in getenumCI2020().
 

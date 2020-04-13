@@ -1,7 +1,7 @@
 Package: verisr
 Type: Package
 Title: Tools for working with VERIS objects
-Version: 2.3.1.0023
+Version: 2.3.1.0024
 Date: 2019-09-04
 Authors@R: c( person("Gabriel", "Bassett", email = "gabriel.bassett@verizon.com",
     role = c("cre", "aut")))
@@ -27,6 +27,8 @@ Imports:
     lifecycle (>= 0.1.0)
 Suggests:
     brms (>= 2.10.0),
+    infer (>= 0.5.1),
+    moderndive (>= 0.4.0),
     testthat,
     tidybayes (>= 1.1.0),
     plyr (>= 1.8.4)
