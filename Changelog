@@ -1,3 +1,6 @@
+version 2.3.1.0026:
+* corrected bug introduced in previous change
+
 version 2.3.1.0025:
 * fixed an error handling issue in 'top' for getenumCI2020
 

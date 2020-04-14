@@ -127,7 +127,7 @@ getenumCI2020 <- function(veris,
     if (!quietly) { warning("ci.method set to mcmc, but 'brms' and 'tidybayes' not both installed.  updating ci.method to 'bootstrap'") }
   }
   
-  if (top < 1) {
+  if (!is.null(top) && top < 1) {
     if (!quietly) { warning(paste0("Top must be 1 or greater, but is (", top, "). Setting top to NULL.")) }
     top <- NULL
   }
