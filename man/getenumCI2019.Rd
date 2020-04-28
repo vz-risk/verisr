@@ -77,6 +77,7 @@ While getenumCI() may work on other types of dataframes, it was designed for
 tmp <- tempfile(fileext = ".dat")
 download.file("https://github.com/vz-risk/VCDB/raw/master/data/verisr/vcdb.dat", tmp, quiet=TRUE)
 load(tmp, verbose=TRUE)
+library(magrittr)
 chunk <- getenumCI(vcdb, "action.hacking.variety")
 chunk
 chunk <- getenumCI(vcdb, "action.hacking.variety", by="timeline.incident.year")
@@ -84,7 +85,9 @@ chunk
 chunk <- getenumCI(vcdb, 
                    "action.hacking.variety", 
                    by="timeline.incident.year") 
-reshape2::acast(chunk, by~enum, fill=0)
+chunk \%>\% 
+    dplyr::select(by, enum, freq) \%>\% 
+    tidyr::pivot_wider(names_from=enum, values_from=freq, values_fill = list(freq=0))
 getenumCI(vcdb, "action")
 getenumCI(vcdb, "asset.variety")
 getenumCI(vcdb, "asset.assets.variety")

@@ -1,7 +1,7 @@
 Package: verisr
 Type: Package
 Title: Tools for working with VERIS objects
-Version: 2.3.1.0026
+Version: 2.3.2.001
 Date: 2019-09-04
 Authors@R: c( person("Gabriel", "Bassett", email = "gabriel.bassett@verizon.com",
     role = c("cre", "aut")))
@@ -11,25 +11,27 @@ License: GPL-2
 Depends:
     R (>= 3.3.1)
 Imports:
+    magrittr,
     methods,
     stats,
     utils,
-    dplyr,
     rjson,
     RCurl,
     data.table,
     ggplot2,
     gridExtra,
     grid,
-    binom (>= 1.1-1),
-    reshape2 (>= 1.4.1),
     boot (>= 1.3-18),
     lifecycle (>= 0.1.0)
 Suggests:
+    binom (>= 1.1-1),
     brms (>= 2.10.0),
+    dplyr (>= 0.8.3),
     infer (>= 0.5.1),
     moderndive (>= 0.4.0),
+    scales (>= 1.0.0),
     testthat,
     tidybayes (>= 1.1.0),
+    tidyr (>= 1.0.2),
     plyr (>= 1.8.4)
 RoxygenNote: 6.1.1

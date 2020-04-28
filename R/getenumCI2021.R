@@ -47,6 +47,7 @@
 #'     the frequency value to. (default = 5)
 #' @param na DEPRECIATED! Use '\code{na.rm}' parameter.
 #' @param ci.level DEPRECIATED! same as \code{cred.mass}.
+#' @param ci.params Set to TRUE to recieve a list column in the output of or used to recreate the model used to determine the ci.
 #' @param force getenumCI() will attempt to enforce sane confidence-based practices (such as hiding x and freq in low sample sizes).  Setting force to 'TRUE' will override these best practices.
 #' @param quietly When TRUE, suppress all warnings and messages.  This is helpful when getenumCI is used in a larger script or markdown document.
 #' @param ... A catch all for functions using arguments from previous
@@ -77,7 +78,7 @@
 #' getenumCI(vcdb, "action.social.variety.Phishing")
 #' getenumCI(vcdb, "actor.*.motive", ci.method="wilson", na.rm=FALSE)
 #' rm(vcdb)
-getenumCI2020 <- function(veris, 
+getenumCI2021 <- function(veris, 
                       enum, 
                       by=NULL,
                       na.rm = NULL, 
@@ -86,6 +87,7 @@ getenumCI2020 <- function(veris,
                       ci.method=c(), 
                       cred.mass=0.95,
                       ci.level=NULL, 
+                      ci.params=FALSE,
                       round.freq=5, 
                       na = NULL, 
                       top = NULL,
@@ -121,8 +123,8 @@ getenumCI2020 <- function(veris,
     ci.method <- ci.method[1]
   }
   
-  if (!is.null(ci.method) && !ci.method %in% c("mcmc", "bootstrap")) {
-    stop(paste0("ci.method ", ci.method, " not one of c('mcmc', 'bootstrap')."))
+  if (!is.null(ci.method) && !ci.method %in% c("mcmc", "bootstrap", "bayes")) {
+    stop(paste0("ci.method ", ci.method, " not one of c('mcmc', 'bootstrap', 'bayes')."))
   }
   
   if (ci.method == "mcmc" && length(intersect(c("brms", "tidybayes"), rownames(installed.packages()))) < 2) {
@@ -447,38 +449,158 @@ getenumCI2020 <- function(veris,
     }
     
     # apply the confidence interval.  Apply to NA's and unk separately depending on if selected. (If you try and apply CI's cart blanc to the NA/Unknowns it can error out on binding the columns)
-    if (!is.null(ci.method) && ci.method == "bootstrap") {
+    if (!is.null(ci.method) && ci.method == "bayes") {
       if (nrow(enum_subchunk) > 0) {
         # replacing the one-liner with this because binom.bayes has a bug that errors if the ends (0 or n) are included in x and number of rows > 3
-        enum_subchunk[['method']] <- "bootstrap"
+        enum_subchunk[['method']] <- "bayes"
         enum_subchunk[['lower']] <- NA
         enum_subchunk[['upper']] <- NA
+        enum_subchunk[['params']] <- vector(mode = "list", nrow(enum_subchunk))
         if (any(enum_subchunk$x != n & enum_subchunk$x != 0)) { # check if any aren't 0 or n. otherwise, calculating a CI will fail.
-          enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, c('lower', 'upper') ] <- binom::binom.bayes(as.integer(enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, 'x' ]), as.integer(enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, 'n' ], conf.level=cred.mass))[ , c(7, 8)]
+          enum_subbinom <- binom::binom.bayes(as.integer(enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, 'x' ]), as.integer(enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, 'n' ], conf.level=cred.mass))
+          enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, c('lower', 'upper') ] <- enum_subbinom[ , c(7, 8)]
+          enum_subchunk[enum_subchunk$x != n & enum_subchunk$x != 0, ][['params' ]] <- Map(c, enum_subbinom$shape1, enum_subbinom$shape2)
         }  
         ## Commenting out the 'if' blocks as I _think_ they are unnecessary
-        #if (0 %in% enum_subchunk$x) {
-        enum_subchunk[enum_subchunk$x == 0, c('lower', 'upper')] <- binom::binom.bayes(0, n, conf.level=cred.mass)[, c(7, 8)]
-        #}
-        #if (n %in% enum_subchunk$x) {
-        enum_subchunk[enum_subchunk$x == n, c('lower', 'upper')] <- binom::binom.bayes(n, n, conf.level=0.95)[, c(7, 8)]
-        #}
-        # enum_subchunk <- cbind(enum_subchunk, data.frame(method="bootstrap"), binom::binom.confint(enum_subchunk$x, enum_subchunk$n, conf.level=cred.mass, methods="bayes")[ , c(5, 6)])
+        if (0 %in% enum_subchunk$x) {
+          enum_subbinom_zero <- binom::binom.bayes(0, n, conf.level=cred.mass)
+          enum_subchunk[enum_subchunk$x == 0, c('lower', 'upper')] <- enum_subbinom_zero[, c(7, 8)]
+          enum_subchunk[enum_subchunk$x == 0, ][['params']] <- Map(c, enum_subbinom_zero$shape1, enum_subbinom_zero$shape2)
+        }
+        if (n %in% enum_subchunk$x) {
+          enum_subbinom_n <- binom::binom.bayes(n, n, conf.level=cred.mass)
+          enum_subchunk[enum_subchunk$x == n, c('lower', 'upper')] <- enum_subbinom_n[, c(7, 8)]
+          enum_subchunk[enum_subchunk$x == n, ][['params']] <- Map(c, enum_subbinom_n$shape1, enum_subbinom_n$shape2)
+        }
+        # enum_subchunk <- cbind(enum_subchunk, data.frame(method="bayes"), binom::binom.confint(enum_subchunk$x, enum_subchunk$n, conf.level=cred.mass, methods="bayes")[ , c(5, 6)])
       } else {
         enum_subchunk <- cbind(enum_subchunk, data.frame(method=character(), lower=numeric(), upper=numeric()))
+        enum_subchunk[['params']] <- list()
       }
       if (unk == FALSE) {
         unk_subchunk <- cbind(unk_subchunk, data.frame(method=rep(NA, nrow(unk_subchunk)), lower=rep(NA, nrow(unk_subchunk)), upper=rep(NA, nrow(unk_subchunk))))
+        unk_subchunk[['params']] <- vector(mode = "list", nrow(unk_subchunk))
       } else if (nrow(unk_subchunk) >0) {
-        unk_subchunk <- cbind(unk_subchunk, data.frame(method="bootstrap"), binom::binom.confint(unk_subchunk$x, unk_subchunk$n, conf.level=cred.mass, methods="bayes")[ , c(5, 6)])
+        unk_subbinom <- binom::binom.bayes(unk_subchunk$x, unk_subchunk$n, conf.level=cred.mass)
+        unk_subchunk <- cbind(unk_subchunk, data.frame(method="bayes"), unk_subbinom[ , c(7, 8)])
+        unk_subchunk[['params']] <- Map(c, unk_subbinom$shape1, unk_subbinom$shape2)
       } else {
         unk_subchunk <- data.frame()
       }
       if (!is.null(na)) {
         if (na == FALSE) {
           na_subchunk <- cbind(na_subchunk, data.frame(method=rep(NA, nrow(na_subchunk)), lower=rep(NA, nrow(na_subchunk)), upper=rep(NA, nrow(na_subchunk))))
+          na_subchunk[['params']] <- vector(mode = "list", nrow(na_subchunk))
         } else if (nrow(na_subchunk) > 0) {
-          na_subchunk <- cbind(na_subchunk, data.frame(method="bootstrap"), binom::binom.confint(na_subchunk$x, na_subchunk$n, conf.level=cred.mass, methods="bayes")[ , c(5, 6)])
+          na_subbinom <- binom::binom.bayes(na_subchunk$x, na_subchunk$n, conf.level=cred.mass)
+          na_subchunk <- cbind(na_subchunk, data.frame(method="bayes"), na_subbinom[ , c(7, 8)])
+          na_subchunk[['params']] <- Map(c, na_subbinom$shape1, na_subbinom$shape2)
+        } else {
+          na_subchunk <- data.frame()
+        }
+      }
+    } else if (!is.null(ci.method) && ci.method == "bootstrap") {
+      if (nrow(enum_subchunk) > 0) {
+        # replacing the one-liner with this because binom.bayes has a bug that errors if the ends (0 or n) are included in x and number of rows > 3
+        enum_subchunk[['method']] <- "bootstrap"
+        enum_subchunk[['lower']] <- NA
+        enum_subchunk[['upper']] <- NA
+        enum_subchunk[['params']] <- vector(mode = "list", nrow(enum_subchunk))
+        if (nrow(enum_subchunk) > 0) { # check if any aren't 0 or n. otherwise, calculating a CI will fail.
+          enum_subdist <- lapply(1:nrow(enum_subchunk), function(i) {
+            enum_sub_samples <- data.frame(result = c(rep(TRUE, enum_subchunk[i, 'x']), rep(FALSE, (enum_subchunk[i, 'n'] - enum_subchunk[i, 'x']))))
+            if (!any(enum_sub_samples$result)) {
+              bootstrap_distribution <- data.frame(replicate=1:500, stat=as.double(0))
+              attr(bootstrap_distribution, 'response') <- "result"
+              attr(bootstrap_distribution, 'success') <- "TRUE"
+              attr(bootstrap_distribution, 'response_type') <- "factor"
+              attr(bootstrap_distribution, 'theory_type') <- "One sample prop z"
+              attr(bootstrap_distribution, 'generate') <- TRUE
+              attr(bootstrap_distribution, 'type') <- "bootstrap"
+              attr(bootstrap_distribution, 'stat') <- "prop"
+            } else {
+              # specify that we variables to use and what their levels mean
+              bootstrap_distribution <- infer::specify(enum_sub_samples, response = result, success="TRUE")
+              # sample with replacement (bootstrap) to create our bootstrap distributions
+              bootstrap_distribution <- infer::generate(bootstrap_distribution, reps=500, type = "bootstrap")
+              # calculate a proportion per bootsrap distribution rep
+              bootstrap_distribution <- infer::calculate(bootstrap_distribution, stat = "prop")
+            }
+            # return
+            bootstrap_distribution
+          })
+          enum_subchunk[ , c('lower', 'upper') ] <- do.call(rbind, lapply(enum_subdist, infer::get_confidence_interval, level=ci.mass, type="percentile"))
+          enum_subchunk[ , ][['params' ]] <- enum_subdist
+        }  
+        # enum_subchunk <- cbind(enum_subchunk, data.frame(method="bayes"), binom::binom.confint(enum_subchunk$x, enum_subchunk$n, conf.level=cred.mass, methods="bayes")[ , c(5, 6)])
+      } else {
+        enum_subchunk <- cbind(enum_subchunk, data.frame(method=character(), lower=numeric(), upper=numeric()))
+        enum_subchunk[['params']] <- list()
+      }
+      if (unk == FALSE) {
+        unk_subchunk <- cbind(unk_subchunk, data.frame(method=rep(NA, nrow(unk_subchunk)), lower=rep(NA, nrow(unk_subchunk)), upper=rep(NA, nrow(unk_subchunk))))
+        unk_subchunk[['params']] <- vector(mode = "list", nrow(unk_subchunk))
+      } else if (nrow(unk_subchunk) >0) {
+        unk_subdist <- lapply(1:nrow(unk_subchunk), function(i) {
+          enum_sub_samples <- data.frame(result = c(rep(TRUE, unk_subchunk[i, 'x']), rep(FALSE, (enum_subchunk[i, 'n'] - enum_subchunk[i, 'x']))))
+          if (!any(enum_sub_samples$result)) {
+            bootstrap_distribution <- data.frame(replicate=1:500, stat=as.double(0))
+            attr(bootstrap_distribution, 'response') <- "result"
+            attr(bootstrap_distribution, 'success') <- "TRUE"
+            attr(bootstrap_distribution, 'response_type') <- "factor"
+            attr(bootstrap_distribution, 'theory_type') <- "One sample prop z"
+            attr(bootstrap_distribution, 'generate') <- TRUE
+            attr(bootstrap_distribution, 'type') <- "bootstrap"
+            attr(bootstrap_distribution, 'stat') <- "prop"
+          } else {
+            # specify that we variables to use and what their levels mean
+            bootstrap_distribution <- infer::specify(enum_sub_samples, response = result, success="TRUE")
+            # sample with replacement (bootstrap) to create our bootstrap distributions
+            bootstrap_distribution <- infer::generate(bootstrap_distribution, reps=500, type = "bootstrap")
+            # calculate a proportion per bootsrap distribution rep
+            bootstrap_distribution <- infer::calculate(bootstrap_distribution, stat = "prop")
+          }
+          # return
+          bootstrap_distribution
+        })
+        unk_subinfer <- do.call(rbind, lapply(unk_subdist, infer::get_confidence_interval, level=ci.mass, type="percentile"))
+        names(unk_subinfer) <- c("lower", "upper")
+        unk_subchunk <- cbind(unk_subchunk, unk_subinfer)
+        unk_subchunk[['params']] <- unk_subdist
+      } else {
+        unk_subchunk <- data.frame()
+      }
+      if (!is.null(na)) {
+        if (na == FALSE) {
+          na_subchunk <- cbind(na_subchunk, data.frame(method=rep(NA, nrow(na_subchunk)), lower=rep(NA, nrow(na_subchunk)), upper=rep(NA, nrow(na_subchunk))))
+          na_subchunk[['params']] <- vector(mode = "list", nrow(na_subchunk))
+        } else if (nrow(na_subchunk) > 0) {
+          na_subdist <- lapply(1:nrow(na_subchunk), function(i) {
+            enum_sub_samples <- data.frame(result = c(rep(TRUE, na_subchunk[i, 'x']), rep(FALSE, (enum_subchunk[i, 'n'] - enum_subchunk[i, 'x']))))
+            if (!any(enum_sub_samples$result)) {
+              bootstrap_distribution <- data.frame(replicate=1:500, stat=as.double(0))
+              attr(bootstrap_distribution, 'response') <- "result"
+              attr(bootstrap_distribution, 'success') <- "TRUE"
+              attr(bootstrap_distribution, 'response_type') <- "factor"
+              attr(bootstrap_distribution, 'theory_type') <- "One sample prop z"
+              attr(bootstrap_distribution, 'generate') <- TRUE
+              attr(bootstrap_distribution, 'type') <- "bootstrap"
+              attr(bootstrap_distribution, 'stat') <- "prop"
+            } else {
+              # specify that we variables to use and what their levels mean
+              bootstrap_distribution <- infer::specify(enum_sub_samples, response = result, success="TRUE")
+              # sample with replacement (bootstrap) to create our bootstrap distributions
+              bootstrap_distribution <- infer::generate(bootstrap_distribution, reps=500, type = "bootstrap")
+              # calculate a proportion per bootsrap distribution rep
+              bootstrap_distribution <- infer::calculate(bootstrap_distribution, stat = "prop")
+            }
+            # return
+            bootstrap_distribution
+          })
+          na_subinfer <- do.call(rbind, lapply(na_subdist, infer::get_confidence_interval, level=ci.mass, type="percentile"))
+          names(na_subinfer) <- c("lower", "upper")
+          na_subchunk <- cbind(na_subchunk, na_subinfer)
+          na_subchunk[['params']] <- na_subdist
         } else {
           na_subchunk <- data.frame()
         }
@@ -518,20 +640,24 @@ getenumCI2020 <- function(veris,
         # As such, this is a hack until a mapping can be extracted from the model object or the same function used internally can be used to create a mapping.
         #mcmc$enum <- plyr::mapvalues(enum, sort(unique(enum)), sort(levels(chunk$enum)))
         # Per https://discourse.mc-stan.org/t/brms-non-standard-variable-name-modification/11412
-        mcmc$enum <- plyr::mapvalues(mcmc$enum, gsub("[ \t\r\n]", ".", as.character(unique(subchunk_to_ci$enum))), as.character(unique(subchunk_to_ci$enum))) # it would be nice to not have to import plyr, but oh well. - GDB 191123
+        mcmc$enum <- plyr::mapvalues(mcmc$enum, gsub("[ \t\r\n]", ".", as.character(unique(subchunk_to_ci$enum))), as.character(unique(subchunk_to_ci$enum)), warn_missing=FALSE) # it would be nice to not have to import plyr, but oh well. - GDB 191123
       }
       
       # separate the values back into their respective subchunks
       if (nrow(enum_subchunk) > 0) {
         enum_subchunk <- cbind(enum_subchunk, data.frame(method="mcmc", lower=mcmc$condition_mean.lower[match(enum_subchunk$enum, mcmc$enum)], upper=mcmc$condition_mean.upper[match(enum_subchunk$enum, mcmc$enum)]))
+        enum_subchunk[['params']] <- vector(mode = "list", nrow(enum_subchunk))
         mcmc <- mcmc[(nrow(enum_subchunk)+1):nrow(mcmc), ] #remove the subchunk rows.
       } else {
         enum_subchunk <- cbind(enum_subchunk, data.frame(method=character(), lower=numeric(), upper=numeric()))
+        enum_subchunk[['params']] <- list()
       }
       if (unk == FALSE) {
         unk_subchunk <- cbind(unk_subchunk, data.frame(method=rep(NA, nrow(unk_subchunk)), lower=rep(NA, nrow(unk_subchunk)), upper=rep(NA, nrow(unk_subchunk))))
+        unk_subchunk[['params']] <- vector(mode = "list", nrow(unk_subchunk))
       } else if (nrow(unk_subchunk) >0) {
         unk_subchunk <- cbind(unk_subchunk, data.frame(method="mcmc", lower=mcmc$condition_mean.lower[[1]], upper=mcmc$condition_mean.upper[[1]]))
+        unk_subchunk[['params']] <- vector(mode = "list", nrow(unk_subchunk))
         mcmc <- mcmc[2:nrow(mcmc), ] #remove the subchunk rows.
       } else {
         unk_subchunk <- data.frame()
@@ -539,8 +665,10 @@ getenumCI2020 <- function(veris,
       if (!is.null(na)) {
         if (na == FALSE) {
           na_subchunk <- cbind(na_subchunk, data.frame(method=rep(NA, nrow(na_subchunk)), lower=rep(NA, nrow(na_subchunk)), upper=rep(NA, nrow(na_subchunk))))
+          na_subchunk[['params']] <- vector(mode = "list", nrow(na_subchunk))
         } else if (nrow(na_subchunk) > 0) {
           na_subchunk <- cbind(na_subchunk, data.frame(method="mcmc", lower=mcmc$condition_mean.lower[[1]], upper=mcmc$condition_mean.upper[[1]]))
+          na_subchunk[['params']] <- vector(mode = "list", nrow(na_subchunk))
         } else {
           na_subchunk <- data.frame()
         }
@@ -569,6 +697,11 @@ getenumCI2020 <- function(veris,
       subchunk$freq[!is.na(subchunk$n)] <- NA
     }
     
+    # We do this here after the  subchunk join in case enum_subchunk didn't have any rows
+    # Also, this will not be in the '1' position after sorting.  But since there is  a model per 'by', it'd be a PITA to place it.
+    # people will just need to find it in the output per by. (It's the only non-null param.)
+    if (ci.params && !is.null(ci.method) && ci.method == "mcmc") {subchunk[1, 'params'][[1]] <- list(m)} 
+    
     subchunk # return
   })
   
@@ -576,12 +709,17 @@ getenumCI2020 <- function(veris,
   #if (any(unlist(lapply(chunks_list, function(l) {"lower" %in% names(l)})))) {
   chunks_list <- lapply(chunks_list, function(subchunk) {
     if (nrow(subchunk) == 0) { # handles zero values
-      subchunk <- data.frame(by = factor(), x = integer(), n = integer(), freq = numeric(), method = character(), lower = numeric(), upper = numeric())
-    } else if (!"lower" %in% names(subchunk)) { # handles some values but not enough
-      subchunk$method <- "none"
-      subchunk$lower <- NA_real_
-      subchunk$upper <- NA_real_
-    }
+      subchunk <- data.frame(by = factor(), x = integer(), n = integer(), freq = numeric(), method = character(), lower = numeric(), upper = numeric(), params=list())
+    } else {
+      if (!"lower" %in% names(subchunk)) { # handles some values but not enough
+        subchunk$method <- "none"
+        subchunk$lower <- NA_real_
+        subchunk$upper <- NA_real_
+      }
+      if (!"params" %in% names(subchunk)) {
+        subchunk[["params"]] <- vector(mode = "list", nrow(subchunk))
+      }
+    }  
     subchunk
   })
   #}
@@ -649,6 +787,11 @@ getenumCI2020 <- function(veris,
     if (all(is.na(chunk$n))) {
       chunk <- chunk[!is.na(chunk$n), ]
     }
+  }
+  
+  # if no params, drop the params
+  if (!ci.params) {
+    chunk <- chunk[, names(chunk) != "params"]
   }
   
   # return

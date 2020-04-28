@@ -165,8 +165,8 @@ post.proc <- function(veris) {
   large <- c("victim.employee_count.1001 to 10000", "victim.employee_count.10001 to 25000", 
              "victim.employee_count.25001 to 50000", "victim.employee_count.50001 to 100000", 
              "victim.employee_count.Over 100000", "victim.employee_count.Large")
-  veris[ , victim.orgsize.Small := rowSums(veris[ ,small, with=F]) > 0]
-  veris[ , victim.orgsize.Large := rowSums(veris[ ,large, with=F]) > 0]
+  veris[ , victim.orgsize.Small := rowSums(veris[ ,small, with=FALSE]) > 0]
+  veris[ , victim.orgsize.Large := rowSums(veris[ ,large, with=FALSE]) > 0]
   # victim.industry
   ind2 <- substring(unlist(veris[ ,"victim.industry", with=F], use.names=F), 1L, 2L)
   # want an enumeration now, instead of a single list.
@@ -185,7 +185,7 @@ post.proc <- function(veris) {
     veris[ ,(iname):=(ind2==x)] #, with=F
   }
   ## industry3 may require more prep work since dashes are allowed.
-  veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=F], 
+  veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=FALSE], 
                                                 use.names=F), 1L, 3L)]
 
   # victim.industry.name
@@ -195,9 +195,9 @@ post.proc <- function(veris) {
   })
   
   # actor.partner.industry
-  veris[ , actor.partner.industry2 := substring(unlist(veris[ ,"actor.partner.industry", with=F], 
+  veris[ , actor.partner.industry2 := substring(unlist(veris[ ,"actor.partner.industry", with=FALSE], 
                                                 use.names=F), 1L, 2L)]
-  veris[ , actor.partner.industry3 := substring(unlist(veris[ ,"actor.partner.industry", with=F], 
+  veris[ , actor.partner.industry3 := substring(unlist(veris[ ,"actor.partner.industry", with=FALSE], 
                                                 use.names=F), 1L, 3L)]
   veris <- cbind(veris, getpattern(veris))
   print("veris dimensions")
@@ -211,6 +211,17 @@ post.proc <- function(veris) {
   } 
   fails <- sapply(colnames(veris), function(x) is.logical(veris[[x]]) & any(is.na(veris[[x]])))
   print(which(fails))
+  
+  # Add this to ensure that if the 'confidentiality' section is empty, data_disclosure is marked 'no' (i.e. not a breach) - GDB 200428
+  # NOTE: This may not be the best choice.  We may want to mark these 'unknown', but if we had any reason to believe it was a breach, it should have been marked at least 'potentially'.
+  veris$attribute.confidentiality.data_disclosure.No <- veris$attribute.confidentiality.data_disclosure.No |
+    unlist(apply(veris[, grepl("^attribute.confidentiality", names(veris)), with=FALSE], MARGIN=1, function(v) {
+      # apply() casts to character
+      v <- gsub("FALSE", "", v) # make "FALSE" into ""
+      v <- gsub("0", "", v) # makes numeric zero columns 0
+      all(na.omit(v) == "") # are any not NA and not FALSE?
+  }))
+  
   veris
 }
 
