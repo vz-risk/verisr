@@ -224,7 +224,7 @@ test_veris_proportion <- function(chunk, Ea, prop, direction, ci.level=0.05, rep
   if (!quietly) {
     if (direction == "two_sided") {
       message(paste0("The hypothesis is ", prop >= percentile_ci[[1]] & prop <= percentile_ci[[2]], " because the proportion of ", scales::percent(prop, accuracy=1),
-                     " is in the ", scales::percent(1-ci.level, accuracy=1), " range between ",  scales::percent(percentile_ci[[1]], accuracy=0.01), " and ",
+                     " is", ifelse(prop >= percentile_ci[[1]] & prop <= percentile_ci[[2]], " ", " not "),  "in the ", scales::percent(1-ci.level, accuracy=1), " range between ",  scales::percent(percentile_ci[[1]], accuracy=0.01), " and ",
                      scales::percent(percentile_ci[[2]], accuracy=0.01), "."))
       return(prop >= percentile_ci[[1]] & prop <= percentile_ci[[2]])
     } else {
@@ -336,7 +336,8 @@ test_veris_consistency <- function(chunk, Ea, Eb, ci.level=0.05, reps=1000, quie
 #' 
 #' @param chunk getenumCI() object
 #' @param Ea Enumeration A.  e.g. "Error"
-#' @param stable TRUE means "hypothesis is 'not changing'". FALSE means "hypothesis is 'changing'"
+#' @param direction "greater" for increasing, "less" for decreasing, "equal" for "not changing"
+#' @param stable DEPRECIATED.  USE 'direction="equal"'. TRUE means "hypothesis is 'not changing'". FALSE means "hypothesis is 'changing'"
 #' @param quietly do not produce textual output
 #' @param visualize produce visual output
 #' @return a logical TRUE/FALSE to the hypothesis
@@ -358,11 +359,19 @@ test_veris_consistency <- function(chunk, Ea, Eb, ci.level=0.05, reps=1000, quie
 #'   
 #'   verisr::test_veris_time_stability(chunk, "Lost and Stolen Assets", stable=TRUE)
 #' }
-test_veris_time_stability <- function(chunk, Ea, stable, quietly=FALSE, visualize=FALSE) {
+test_veris_time_stability <- function(chunk, Ea, stable=NULL, direction=NULL, quietly=FALSE, visualize=FALSE) {
+  
+  if (is.null(direction) & !is.null(stable)) {
+    if (stable) { direction <- "equal" }
+  }
+  
+  if (is.null(direction) | ! direction %in% c("equal", "greater", "less")) {
+    stop("Please specify a direction. Use 'equal' for not changing.")
+  }
   
   chunk <- chunk[chunk$enum == Ea, ]
   
-  if (any(table(chunk$by) > 1)) {stop("There must only be one measurement per year.")}
+  if (any(table(chunk$by) != 1)) {stop("There must only be one measurement per year.")}
   
   prop_model <- stats::lm(freq ~ by, data = chunk)
   
@@ -383,26 +392,41 @@ test_veris_time_stability <- function(chunk, Ea, stable, quietly=FALSE, visualiz
   }
   
 
-  if (stable) {
+  if (direction == "equal") {
     if (!quietly) {
+      res <- as.logical(0 >= ret[ret$term == "by", 'lower_ci'] & 0 <= ret[ret$term == "by", 'upper_ci'])
       message(paste0("The hypothesis of stability is NOT ",
-                     !as.logical(0 >= ret[ret$term == "by", 'lower_ci'] & 0 <= ret[ret$term == "by", 'upper_ci']), 
+                     !res, 
                      " because the confidence interval of ", 
                      scales::percent(as.double(ret[ret$term == "by", 'lower_ci']), accuracy=0.01), " to ", 
                      scales::percent(as.double(ret[ret$term == "by", 'upper_ci']), accuracy=0.01), " contains 0")
       )
     }
-    return((as.logical(0 >= ret[ret$term == "by", 'lower_ci'] & 0 <= ret[ret$term == "by", 'upper_ci'])))
-  } else {
+    return(res)
+  } else if (direction == "greater") {
     if (!quietly) {
-      message(paste0("The hypothesis of non-stability is ",
-                     !as.logical(0 >= ret[ret$term == "by", 'lower_ci'] & 0 <= ret[ret$term == "by", 'upper_ci']), 
+      res <- as.logical(0 < ret[ret$term == "by", 'lower_ci'])
+      message(paste0("The hypothesis of increasing values is ",
+                     res, 
                      " because the confidence interval of ", 
                      scales::percent(as.double(ret[ret$term == "by", 'lower_ci']), accuracy=0.01), " to ", 
-                     scales::percent(as.double(ret[ret$term == "by", 'upper_ci']), accuracy=0.01), " does not contain 0")
+                     scales::percent(as.double(ret[ret$term == "by", 'upper_ci']), accuracy=0.01), " is", 
+                     ifelse(res, " ", " not "),  "greater than 0")
       )
     }
-    return(!as.logical(0 >= ret[ret$term == "by", 'lower_ci'] & 0 <= ret[ret$term == "by", 'upper_ci']))
+    return(res)
+  } else if (direction == "less") {
+    if (!quietly) {
+      res <- as.logical(0 > ret[ret$term == "by", 'upper_ci'])
+      message(paste0("The hypothesis of increasing values is ",
+                     as.logical(0 > ret[ret$term == "by", 'upper_ci']), 
+                     " because the confidence interval of ", 
+                     scales::percent(as.double(ret[ret$term == "by", 'lower_ci']), accuracy=0.01), " to ", 
+                     scales::percent(as.double(ret[ret$term == "by", 'upper_ci']), accuracy=0.01), " is", 
+                     ifelse(res, " ", " not "),  "less than 0")
+      )
+    }
+    return(res)
   }
   
   error("This code location should not be reached.")
