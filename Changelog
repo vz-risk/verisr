@@ -1,3 +1,6 @@
+version 2.3.2.003:
+* Corrected an edge case in getenumCI2020 and getenumCI2021. (catch error when "NA" in single column enum w/ ci.method)
+
 version 2.3.2.002:
 * updated test_veris_time_stability() to accept greater/less (increasing/decreasing) directions as well
 

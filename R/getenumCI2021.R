@@ -243,6 +243,7 @@ getenumCI2021 <- function(veris,
       }
       
       # remove NAs
+      if (is.null(na) & any(grepl("^(.+[.]|)NA$", names(v)))) { stop("'na' must be specified if any column names end in .NA")}
       if (!is.null(na)) {
         if (na == FALSE) {
           n <- n - sum(v[grepl("^(.+[.]|)NA$", names(v))], na.rm=TRUE)
