@@ -230,6 +230,7 @@ getenumCI2021 <- function(veris,
       
       # number of records that have one of our enumerations
       n <- sum(rowSums(subdf_for_n, na.rm=TRUE) > 0, na.rm=TRUE)
+      #n <- length(unique(as.character(subdf_for_n[!is.na(rowSums(subdf_for_n)) & rowSums(subdf_for_n) > 0, "plus.master_id"]))) # counts unique master_ids instead of rows directly
       # count of each enumeration
     } else if (enum_type == "single_column") {
       table_v <- table(subdf[[enum_enums]])
@@ -530,7 +531,7 @@ getenumCI2021 <- function(veris,
             # return
             bootstrap_distribution
           })
-          enum_subchunk[ , c('lower', 'upper') ] <- do.call(rbind, lapply(enum_subdist, infer::get_confidence_interval, level=ci.mass, type="percentile"))
+          enum_subchunk[ , c('lower', 'upper') ] <- do.call(rbind, lapply(enum_subdist, infer::get_confidence_interval, level=cred.mass, type="percentile"))
           enum_subchunk[ , ][['params' ]] <- enum_subdist
         }  
         # enum_subchunk <- cbind(enum_subchunk, data.frame(method="bayes"), binom::binom.confint(enum_subchunk$x, enum_subchunk$n, conf.level=cred.mass, methods="bayes")[ , c(5, 6)])
@@ -564,7 +565,7 @@ getenumCI2021 <- function(veris,
           # return
           bootstrap_distribution
         })
-        unk_subinfer <- do.call(rbind, lapply(unk_subdist, infer::get_confidence_interval, level=ci.mass, type="percentile"))
+        unk_subinfer <- do.call(rbind, lapply(unk_subdist, infer::get_confidence_interval, level=cred.mass, type="percentile"))
         names(unk_subinfer) <- c("lower", "upper")
         unk_subchunk <- cbind(unk_subchunk, unk_subinfer)
         unk_subchunk[['params']] <- unk_subdist
@@ -598,7 +599,7 @@ getenumCI2021 <- function(veris,
             # return
             bootstrap_distribution
           })
-          na_subinfer <- do.call(rbind, lapply(na_subdist, infer::get_confidence_interval, level=ci.mass, type="percentile"))
+          na_subinfer <- do.call(rbind, lapply(na_subdist, infer::get_confidence_interval, level=cred.mass, type="percentile"))
           names(na_subinfer) <- c("lower", "upper")
           na_subchunk <- cbind(na_subchunk, na_subinfer)
           na_subchunk[['params']] <- na_subdist

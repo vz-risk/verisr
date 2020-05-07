@@ -1,3 +1,6 @@
+version 2.3.2.004:
+* Fixed bug in getenumCI2021 with ci.method="bootstrap"
+
 version 2.3.2.003:
 * Corrected an edge case in getenumCI2020 and getenumCI2021. (catch error when "NA" in single column enum w/ ci.method)
 
