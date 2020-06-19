@@ -227,38 +227,6 @@ getenumCI2021 <- function(veris,
       subdf <- df
     }
     
-    # for subdf, remove duplicate values to prevent over-counting single incident (by plus.master_id) - GDB 200619
-    # using a for loop as we're not recreating anything but assigning existing memory
-    if (length(subdf[["master_id"]]) != length(unique(subdf[["plus.master_id"]]))) {
-      
-      # first separate duplicate from  non-duplicate master_ids
-      rows_per_master_id <- table(veris$plus.master_id) # this is slow
-      
-      dup_subdf <- subdf[subdf[["plus.master_id"]] %in% names(rows_per_master_id[rows_per_master_id > 1]), ]
-      
-      for (master_id in unique(dup_subdf[["plus.master_id"]])) {
-        for (column in setdiff(names(dup_subdf), "plus.master_id")) {
-          #message(column) # DEBUG
-          dup_cols <- ifelse(dup_subdf[["plus.master_id"]] != master_id, FALSE, duplicated(as.vector(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column])))
-          dup_cols[is.na(dup_cols)] <- FALSE
-          # if (length(class(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column])) > 1) {message(paste(column, paste(class(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column]), collapse=",")))} # DEBUG
-          if (class(rev(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column]))[1] == "character") {
-            # if duplicate(), replace with NA for character  replace with FALSE for logical
-            dup_subdf[dup_cols, column] <- NA
-          } else if (class(rev(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column]))[1] == "logical") {
-            dup_subdf[dup_cols, column] <- FALSE
-          } else {
-            # ass as all other character types we'll leave alone.  This assumes no factors.
-          }
-        }
-      }
-      
-      subdf <- rbind(
-        subdf[subdf[["plus.master_id"]] %in% names(rows_per_master_id[rows_per_master_id == 1]), ],
-        dup_subdf
-      )
-    }
-    
     # select the columns that match the enumeration and characterize it's/their type
     enum_enums <- grep(paste0("^",enum,"[.][A-Z0-9][^.]*$"), names(subdf), value=TRUE)
     if (length(enum_enums) > 0) {
@@ -282,6 +250,39 @@ getenumCI2021 <- function(veris,
       } else {
         stop(paste0("Enum ", enum, " did not resolve to any columns."))
       }
+    }
+    
+    # for subdf, remove duplicate values to prevent over-counting single incident (by plus.master_id) - GDB 200619
+    # using a for loop as we're not recreating anything but assigning existing memory
+    if (length(subdf[["master_id"]]) != length(unique(subdf[["plus.master_id"]]))) {
+      
+      # first separate duplicate from  non-duplicate master_ids
+      rows_per_master_id <- table(veris$plus.master_id) # this is slow
+      
+      dup_subdf <- subdf[subdf[["plus.master_id"]] %in% names(rows_per_master_id[rows_per_master_id > 1]), ]
+      
+      for (master_id in unique(dup_subdf[["plus.master_id"]])) {
+        for (column in setdiff(enum_enums, "plus.master_id")) { # attempting to only parse the relevant enumerations to improve performance.
+        #for (column in setdiff(names(dup_subdf), "plus.master_id")) {
+          #message(column) # DEBUG
+          dup_cols <- ifelse(dup_subdf[["plus.master_id"]] != master_id, FALSE, duplicated(as.vector(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column])))
+          dup_cols[is.na(dup_cols)] <- FALSE
+          # if (length(class(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column])) > 1) {message(paste(column, paste(class(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column]), collapse=",")))} # DEBUG
+          if (class(rev(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column]))[1] == "character") {
+            # if duplicate(), replace with NA for character  replace with FALSE for logical
+            dup_subdf[dup_cols, column] <- NA
+          } else if (class(rev(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column]))[1] == "logical") {
+            dup_subdf[dup_cols, column] <- FALSE
+          } else {
+            # ass as all other character types we'll leave alone.  This assumes no factors.
+          }
+        }
+      }
+      
+      subdf <- rbind(
+        subdf[subdf[["plus.master_id"]] %in% names(rows_per_master_id[rows_per_master_id == 1]), ],
+        dup_subdf
+      )
     }
       
     ## This entire section calculates the sample size.  We do it early so we can adjust 'top' if n < ci_n  
