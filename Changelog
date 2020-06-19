@@ -1,3 +1,6 @@
+version 2.3.2.005:
+* Updated getenumCI2021 to calculate 'n' based on unique plus.master_id rather than strict rows.  This also removes the assumption that each row is a unique breach in favor of the more explicit each master_id is a unique breach.
+
 version 2.3.2.004:
 * Fixed bug in getenumCI2021 with ci.method="bootstrap"
 

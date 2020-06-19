@@ -121,6 +121,6 @@ getpattern <- function(veris) {
     x[!is.na(x)][1]
   })
   colnames(pats) <- paste0("pattern.", patcols)
-  retval <- factor(retval, levels=patcols, ordered=T)  
+  #retval <- factor(retval, levels=patcols, ordered=T)  # this is the one, bloody, factor in the whole dataframe.  it's pointless.  Strongly considering removing - GDB 200619
   cbind(data.table(pattern=retval), pats)
 }

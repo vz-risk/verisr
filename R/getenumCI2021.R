@@ -1,3 +1,38 @@
+#' flatten a verisr dataframe such that each row represents a single plus.master_id
+#' @param veris A verisr object
+#' @return a verisr object with each plus.master_id represented by a single row
+#' @export
+flatten_verisr <- function(veris) {
+  # no duplicates so return input verisr object
+  if (length(veris[["plus.master_id"]]) == length(unique(veris[["plus.master_id"]]))) {return(veris)}
+
+  # first separate duplicate from  non-duplicate master_ids
+  rows_per_master_id <- table(veris$plus.master_id) # this is slow
+  
+  ret <- dplyr::bind_rows( # using dplyr here to try and 
+    veris[veris[["plus.master_id"]] %in% names(rows_per_master_id[rows_per_master_id == 1])], # rows that don't need to be changed
+    veris %>%
+      dplyr::summarize(
+        dplyr::across(dplyr::where(is.logical), any, na.rm=TRUE),
+        dplyr::across(dplyr::where(is.numeric), sum, na.rm=TRUE),
+        dplyr::across(dplyr::where(is.character), function(c) {
+          unique_c <- unique(c)
+          if (length(unique_c) > 1) {warning(paste0("First of ", paste(unique_c, collapse=","), " kept during flattening."))}
+          return(unique_c[1])
+        }),
+        dplyr::across(dplyr::where(is.factor), function(c) {
+          c <- as.character(c) # convert to character and treat as normal from there. - catch for patterns as factor.
+          unique_c <- unique(c)
+          if (length(unique_c) > 1) {warning(paste0("First of ", paste(unique_c, collapse=","), " kept during flattening."))}
+          return(unique_c[1])
+        })
+      )
+  )
+  
+  return(ret)
+}
+
+
 #' Summarizes veris enumerations from verisr objects
 #' 
 #' This is the primary analysis function for veris.  It conducts binomial
@@ -111,8 +146,13 @@ getenumCI2021 <- function(veris,
   } else {
     df <- veris
   }
+  
+  # legacy veris objects have 'pattern' as an ordered factor for some reason but it can cause problems so removing.
+  if ("pattern" %in% names(veris)) {
+    df[["pattern"]] <- as.character(df[["pattern"]])
+  }
 
-  #   
+  # for backwards compatibility
   if (!is.null(ci.level)) {
     cred.mass <- ci.level
   }
@@ -136,6 +176,15 @@ getenumCI2021 <- function(veris,
     if (!quietly) { warning(paste0("Top must be 1 or greater, but is (", top, "). Setting top to NULL.")) }
     top <- NULL
   }
+  
+  # getnumCI2021() calculates sample size based on unique plus.master_id's.  While 
+  #   this means that data in multiple rows with the same master_id will be 
+  #   counted multiple times, that is intentional in cases where the value is
+  #   different.  However, if the same value is listed multiple times for a single 
+  #   plus.master_id, it will cause extra counts.  To avoid this, we could flatten
+  #   the dataframe, but that's likely to cause unique duplicates in character columns
+  #   to go uncounted.   Instead, I think we will deduplicate during counting. - GDB 200619
+  # verisr <- dbirR::flatten_verisr(verisr)
   
   # create a list of enumerations to calculate 'enum' _by_
   if (!is.null(by)) {
@@ -178,6 +227,38 @@ getenumCI2021 <- function(veris,
       subdf <- df
     }
     
+    # for subdf, remove duplicate values to prevent over-counting single incident (by plus.master_id) - GDB 200619
+    # using a for loop as we're not recreating anything but assigning existing memory
+    if (length(subdf[["master_id"]]) != length(unique(subdf[["plus.master_id"]]))) {
+      
+      # first separate duplicate from  non-duplicate master_ids
+      rows_per_master_id <- table(veris$plus.master_id) # this is slow
+      
+      dup_subdf <- subdf[subdf[["plus.master_id"]] %in% names(rows_per_master_id[rows_per_master_id > 1]), ]
+      
+      for (master_id in unique(dup_subdf[["plus.master_id"]])) {
+        for (column in setdiff(names(dup_subdf), "plus.master_id")) {
+          #message(column) # DEBUG
+          dup_cols <- ifelse(dup_subdf[["plus.master_id"]] != master_id, FALSE, duplicated(as.vector(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column])))
+          dup_cols[is.na(dup_cols)] <- FALSE
+          # if (length(class(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column])) > 1) {message(paste(column, paste(class(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column]), collapse=",")))} # DEBUG
+          if (class(rev(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column]))[1] == "character") {
+            # if duplicate(), replace with NA for character  replace with FALSE for logical
+            dup_subdf[dup_cols, column] <- NA
+          } else if (class(rev(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column]))[1] == "logical") {
+            dup_subdf[dup_cols, column] <- FALSE
+          } else {
+            # ass as all other character types we'll leave alone.  This assumes no factors.
+          }
+        }
+      }
+      
+      subdf <- rbind(
+        subdf[subdf[["plus.master_id"]] %in% names(rows_per_master_id[rows_per_master_id == 1]), ],
+        dup_subdf
+      )
+    }
+    
     # select the columns that match the enumeration and characterize it's/their type
     enum_enums <- grep(paste0("^",enum,"[.][A-Z0-9][^.]*$"), names(subdf), value=TRUE)
     if (length(enum_enums) > 0) {
@@ -206,15 +287,18 @@ getenumCI2021 <- function(veris,
     ## This entire section calculates the sample size.  We do it early so we can adjust 'top' if n < ci_n  
     # This allows us to handle numerical/factor/character and logical enumerations
     if (enum_type == "multinomial" | enum_type == "logical") {
-      subdf_for_n <- subdf[, enum_enums]
+      subdf_for_n <- subdf[, c(enum_enums, "plus.master_id")]
       
-      if (ncol(subdf_for_n) <= 0) { stop(paste(c("No columns matched feature(s) ", enum, " using regex ", paste0("^",enum,"[.][A-Z0-9][^.]*$"), collapse=" ")))}
+      ### NOTE: There is no check for multiple values induced by multiple rows with the same plus.master_id.
+      ###       If we assume master_id indicates an incident, multiple rows is likely indicative of a desire to count multiple values. - GDB 200619
+      
+      
+      if (ncol(subdf_for_n) <= 1) { stop(paste(c("No columns matched feature(s) ", enum, " using regex ", paste0("^",enum,"[.][A-Z0-9][^.]*$"), collapse=" ")))}
       
       # we remove unknowns because they should normally not be counted
       if (unk == FALSE) {
         if (short.names) {
-          subdf_for_n <- 
-            subdf_for_n <- subdf_for_n[, enum_enums][, !grepl("^(.+[.]|)(U|[A-Za-z]{1,3} - [U|u])nknown$", names(subdf_for_n))] # if short names, bla - unknown is removed. See logical section for why. - GDB 17-01-30
+          subdf_for_n <- subdf_for_n[, !grepl("^(.+[.]|)(U|[A-Za-z]{1,3} - [U|u])nknown$", names(subdf_for_n))] # if short names, bla - unknown is removed. See logical section for why. - GDB 17-01-30
         } else {
           subdf_for_n <- subdf_for_n[, !grepl("^(.+[.]|)(U|u)nknown$", names(subdf_for_n))] # if long names, bla - unknown is kept in sample. See logical section for why. - GDB 17-01-30
         }
@@ -229,10 +313,16 @@ getenumCI2021 <- function(veris,
       }
       
       # number of records that have one of our enumerations
-      n <- sum(rowSums(subdf_for_n, na.rm=TRUE) > 0, na.rm=TRUE)
-      #n <- length(unique(as.character(subdf_for_n[!is.na(rowSums(subdf_for_n)) & rowSums(subdf_for_n) > 0, "plus.master_id"]))) # counts unique master_ids instead of rows directly
+      #n <- sum(rowSums(subdf_for_n, na.rm=TRUE) > 0, na.rm=TRUE)
+      n <- length(unique(as.character(subdf_for_n[rowSums(subset(subdf_for_n, select=-c(plus.master_id)), na.rm=TRUE) > 0, "plus.master_id"]))) # counts unique master_ids instead of rows directly
       # count of each enumeration
     } else if (enum_type == "single_column") {
+      ### Removing below warning. If we assume master_id indicates an incident, multiple rows is likely indicative of a desire to count multiple values. - GDB 200619
+      # lapply(unique(subdf[["plus.master_id"]]), function(master_id) {
+      #   incident <- unique(subdf[subdf$plus.master_id == master_id, ][[enum_enums]])
+      #   if (length(incident) > 1) {warning(paste0("Incident ", master_id, " has ", length(incident), " values (", paste(incident, collapse=","),
+      #                                             ") for column ", enum_enums, ".  This will cause overcounting of this incident."))}
+      # })
       table_v <- table(subdf[[enum_enums]])
       v <- as.integer(table_v)
       names(v) <- names(table_v)
