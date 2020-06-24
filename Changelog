@@ -1,3 +1,8 @@
+version 2.3.2.9001:
+* adding support for zipped JSON files
+* removing dependencies
+
+
 version 2.3.2.005:
 * Updated getenumCI2021 to calculate 'n' based on unique plus.master_id rather than strict rows.  This also removes the assumption that each row is a unique breach in favor of the more explicit each master_id is a unique breach.
 
