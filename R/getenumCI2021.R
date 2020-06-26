@@ -263,9 +263,9 @@ getenumCI2021 <- function(veris,
       
       for (master_id in unique(dup_subdf[["plus.master_id"]])) {
         for (column in setdiff(enum_enums, "plus.master_id")) { # attempting to only parse the relevant enumerations to improve performance.
-        #for (column in setdiff(names(dup_subdf), "plus.master_id")) {
+          #for (column in setdiff(names(dup_subdf), "plus.master_id")) {
           #message(column) # DEBUG
-          if (master_id == "0C0FCC7E-A613-4123-AC90-C3997E30756C" & column == "action.Error") {browser()} # DEBUG
+          # if (master_id == "0C0FCC7E-A613-4123-AC90-C3997E30756C" & column == "action.Error") {browser()} # DEBUG
           ##dup_cols <- ifelse(dup_subdf[["plus.master_id"]] != master_id, FALSE, duplicated(as.vector(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column])))
           dup_cols <- rep(FALSE, nrow(dup_subdf))
           dup_cols[dup_subdf[["plus.master_id"]] == master_id] <- duplicated(as.vector(dup_subdf[dup_subdf[["plus.master_id"]] == master_id, column]))

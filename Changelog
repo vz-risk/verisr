@@ -1,4 +1,13 @@
 version 2.3.2.006:
+* merged in json2veris() changes
+
+version 2.3.2.9002:
+* json2veris() now accepts joined, zipped, generated with vcdb_to_joined.py from the vcdb package. It has been tested with both non-zipped and zipped data collections and appears to work consistently.
+
+version 2.3.2.9001:
+* adding support for zipped JSON files
+
+version 2.3.2.006:
 * Fixed bug in getenumCI2021 associated with duplicate rows.
 
 version 2.3.2.005:

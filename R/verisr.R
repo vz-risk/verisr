@@ -46,7 +46,6 @@
 #' @param schema a full veris schema with enumerations included.
 #' @param progressbar a logical value to show (or not show) a progress bar
 #' @keywords json
-#' @import rjson
 #' @import data.table
 #' @import RCurl
 #' @export
@@ -64,18 +63,57 @@
 #'                     schema="~/veris/verisc-local.json")
 #' }
 json2veris <- function(dir=c(), files=c(), schema=NULL, progressbar=F) {
+  
+  
   savetime <- proc.time()
   # if no schema, try to load it from github
   if (missing(schema)) {
     x <- getURL("https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json")
-    lschema <- fromJSON(json_str=x)
+    lschema <- rjson::fromJSON(json_str=x)
   } else {
-    lschema <- fromJSON(file=schema)
+    lschema <- rjson::fromJSON(file=schema)
   }  
   # create listing of files
-  jfiles <- unlist(sapply(dir, list.files, pattern = "json$", full.names=T))
-  jfiles <- unique(c(jfiles, files))
-  numfil <- length(jfiles)
+  jfiles <- data.frame(jfile = unique(c(files, unlist(sapply(dir, list.files, pattern = "zip$|json$", full.names=T))))) #files and dirs
+  jfiles[['ftype']] <- "file"
+  
+  ### Now we're going to try and parse out the zip files and turn them into text strings
+  zfiles <- jfiles[grepl("\\.zip$", jfiles$jfile), ]
+  jfiles <- jfiles[!grepl("\\.zip$", jfiles$jfile), ]
+
+  for (zfile in zfiles$jfile) { # for each zfile we need to parse it's content and 
+    # get the internal files we need to operate over
+    content <- unzip(zfile, list=TRUE)
+    content <- as.character(content[grepl("[.]json$", content$Name), "Name"])
+    # We'll parse each file to a string
+    zipped_strings <- unlist(lapply(content, function(filename) {
+      con <- unz(zfile, filename, open="") # open set to "" so it isn't opened initially so we can open it and set blocking=TRUE
+      open(con, open="rt", blocking=TRUE) # open it read/text with blocking=TRUE as readLines won't read the last line if blocking is not true on a read text connection
+      s <- paste(readLines(con, warn=FALSE), sep=" ", collapse=" ") # parse all the files to strings
+      close(con)
+      s
+    }))
+    # While we shouldn't zip unjoined files, we'll test for it
+    # This test is flimsy as it just looks for a "[" as the starting character, but the alternative of checking types with jqr is complex.
+    joined <- grepl("^\\s*\\[", zipped_strings) # if it's an array the first character needs to be an open bracket
+    
+    # We'll warn if a zipped file has normal (unjoined) json in it
+    if (any(!joined)) {
+      warning(paste0("The zip file ", zfile, " contains files that aren't joined VERIS json.  ", 
+                     "This is very slow to process though it will work.  ", 
+                     "To improve speed, only included joined json (a list of VERIS objects) in zipped json."))
+    }
+    
+    # we then bind the json strings from both individual files and joine dfiles
+    jfiles <- rbind(jfiles, data.frame(
+      jfile=c(zipped_strings[!joined], # individual files
+              unlist(do.call(c, lapply(zipped_strings[joined], function(s) {jqr::jq(s, ".[]")}))) #joined files separated with qjr ".[]" query
+      ),
+      ftype="string" # we need to identify these as strings as they need to be fed to a different argument of rjson::fromJSON
+    ))
+  }
+    
+  numfil <- nrow(jfiles) # was length, but now jfiles is a data.frame rather than a 
   # need to pull these before we loop, used over and over in loop
   a4 <- geta4names() # just returns a (named) character vector of the 4A's and their next level values.  i.e. actor.External
   vtype <- parseProps(lschema) # recursively parse the schema. returns a named character vector. names=column, value=class. (no enumerations)
@@ -94,18 +132,27 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, progressbar=F) {
   setnames(veris, names(vft))
   # get a text progress bar going
   pb <- NULL
-  if (progressbar) pb <- txtProgressBar(min = 0, max = length(jfiles), style = 3)
+  if (progressbar) pb <- txtProgressBar(min = 0, max = nrow(jfiles), style = 3)
   # in each file, pull out the values and fill in the data table
   event_chain <- vector("list", numfil) # event_chain will be the only list column, so create teh column separately to add back in. - GDB 180118
-  for(i in seq_along(jfiles)) {
-    json <- fromJSON(file=jfiles[i], method='C')
+  for (i in 1:nrow(jfiles)) {
+    #message(i) # DEBUG
+    # we have to use rjson here because other parsers fail
+    if (as.character(jfiles[i, "ftype"] == "file")) {
+      json <- rjson::fromJSON(file=as.character(jfiles[i, "jfile"]), method='C') 
+    } else if (as.character(jfiles[i, "ftype"] == "string")) {
+      json <- rjson::fromJSON(json_str=as.character(jfiles[i, "jfile"]), method='C') 
+    } else {
+      # should not be reachable.
+      stop(paste0("Internal error.  jfile ", jfiles[i, "jfile"], "has type ", jfiles[i, "ftype"], " which is unprocessable."))
+    }
     nfield <- nameveris(json, a4, vtype)
     names
-    if (length(nfield)==0) warning(paste("empty json file parsed from", jfiles[i]))
+    if (length(nfield)==0) warning(paste("empty json file parsed from", jfiles[i, "jfile"]))
     nomatch <- !(names(nfield) %in% colnames(veris))
     if (any(nomatch)) {
       warning(paste0("Column[s]: \n", paste0("  \"", names(nfield)[nomatch], "\"", collpase=", "), 
-                     "\nNot found in schema, source file:", jfiles[i]))
+                     "\nNot found in schema, source file:", jfiles[i, "jfile"]))
     }
     for(x in names(nfield)) {
       if (x != "plus.event_chain") { # we will handle plus.event_chain as a 1-off below. - GDB 180118
@@ -120,7 +167,7 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, progressbar=F) {
       if(is(tt,"warning")) {
         cat(paste0("Warning found trying to set ", i, ", \"", x, "\" for \"", nfield[[x]], "\"\n"))
         cat("  length of assignment:", length(nfield[[x]]), "\n")
-        cat("  in", i, jfiles[i], "\n")
+        cat("  in", i, jfiles[i, "jfile"], "\n")
         print(tt)
         cat("\n")
       }
