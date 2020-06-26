@@ -1,7 +1,7 @@
 Package: verisr
 Type: Package
 Title: Tools for working with VERIS objects
-Version: 2.3.3.9001
+Version: 2.3.3.9002
 Date: 2019-09-04
 Authors@R: c( person("Gabriel", "Bassett", email = "gabriel.bassett@verizon.com",
     role = c("cre", "aut")))
@@ -11,6 +11,7 @@ License: GPL-2
 Depends:
     R (>= 3.3.1)
 Imports:
+    jqr (>= 1.1.0),
     magrittr,
     methods,
     stats,
