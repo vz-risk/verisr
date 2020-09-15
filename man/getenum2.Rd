@@ -4,9 +4,17 @@
 \alias{getenum2}
 \title{Extract counts from one or more enumerations}
 \usage{
-getenum2(veris, enum, primary = NULL, secondary = NULL,
-  filter = NULL, add.n = T, add.freq = T, fillzero = T,
-  exclusive = F)
+getenum2(
+  veris,
+  enum,
+  primary = NULL,
+  secondary = NULL,
+  filter = NULL,
+  add.n = T,
+  add.freq = T,
+  fillzero = T,
+  exclusive = F
+)
 }
 \arguments{
 \item{veris}{a verisr object}

@@ -4,10 +4,22 @@
 \alias{getenumSRC}
 \title{Summarizes veris enumerations from verisr objects}
 \usage{
-getenumSRC(veris, enum, by = NULL, na.rm = NULL, unk = FALSE,
-  short.names = TRUE, source.col = "source_id", sample.size = 31,
-  ci.method = NULL, ci.level = 0.95, boot.r = 999, round.freq = 5,
-  na = NULL, ...)
+getenumSRC(
+  veris,
+  enum,
+  by = NULL,
+  na.rm = NULL,
+  unk = FALSE,
+  short.names = TRUE,
+  source.col = "source_id",
+  sample.size = 31,
+  ci.method = NULL,
+  ci.level = 0.95,
+  boot.r = 999,
+  round.freq = 5,
+  na = NULL,
+  ...
+)
 }
 \arguments{
 \item{veris}{A verisr object}

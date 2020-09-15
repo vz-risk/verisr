@@ -4,8 +4,16 @@
 \alias{test_veris_proportion}
 \title{Determine if Ea is greater than/less than/equal to a set value}
 \usage{
-test_veris_proportion(chunk, Ea, prop, direction, ci.level = 0.05,
-  reps = 1000, quietly = FALSE, visualize = FALSE)
+test_veris_proportion(
+  chunk,
+  Ea,
+  prop,
+  direction,
+  ci.level = 0.05,
+  reps = 1000,
+  quietly = FALSE,
+  visualize = FALSE
+)
 }
 \arguments{
 \item{chunk}{getenumCI() object}

@@ -4,8 +4,15 @@
 \alias{test_veris_consistency}
 \title{Test whether two enumerations are basically equal}
 \usage{
-test_veris_consistency(chunk, Ea, Eb, ci.level = 0.05, reps = 1000,
-  quietly = FALSE, visualize = FALSE)
+test_veris_consistency(
+  chunk,
+  Ea,
+  Eb,
+  ci.level = 0.05,
+  reps = 1000,
+  quietly = FALSE,
+  visualize = FALSE
+)
 }
 \arguments{
 \item{chunk}{getenumCI() object}

@@ -4,8 +4,16 @@
 \alias{test_veris_hypothesis}
 \title{Determine a hypothesis about Ea and Eb}
 \usage{
-test_veris_hypothesis(chunk, Ea, Eb, direction, ci.level = 0.05,
-  reps = 1000, quietly = FALSE, visualize = FALSE)
+test_veris_hypothesis(
+  chunk,
+  Ea,
+  Eb,
+  direction,
+  ci.level = 0.05,
+  reps = 1000,
+  quietly = FALSE,
+  visualize = FALSE
+)
 }
 \arguments{
 \item{chunk}{getenumCI() object}
@@ -49,7 +57,7 @@ and get:
 You want to write in a report "Errors are more common in breaches
 than Misuse.", but how do you validate that? You run:
 
-chunk %>%
+ chunk %>%
    verisr::test_veris_hypothesis("action.Error", "action.Misuse", "greater")
 
 which would return `FALSE` as they are simply too to be significantly different

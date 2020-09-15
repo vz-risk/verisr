@@ -4,9 +4,19 @@
 \alias{getenumCI2019}
 \title{Summarizes veris enumerations from verisr objects}
 \usage{
-getenumCI2019(veris, enum, by = NULL, na.rm = NULL, unk = FALSE,
-  short.names = TRUE, ci.method = c(), ci.level = 0.95,
-  round.freq = 5, na = NULL, ...)
+getenumCI2019(
+  veris,
+  enum,
+  by = NULL,
+  na.rm = NULL,
+  unk = FALSE,
+  short.names = TRUE,
+  ci.method = c(),
+  ci.level = 0.95,
+  round.freq = 5,
+  na = NULL,
+  ...
+)
 }
 \arguments{
 \item{veris}{A verisr object}

@@ -37,6 +37,7 @@ If the variable is not specified, it will attempt to grab the
 "verisc-merged.json" schema from
 https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json.
 
+
 This will return a verisr object, which is a data.table object and can be 
 directly accesses as such.
 

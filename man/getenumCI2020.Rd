@@ -4,10 +4,23 @@
 \alias{getenumCI2020}
 \title{Summarizes veris enumerations from verisr objects}
 \usage{
-getenumCI2020(veris, enum, by = NULL, na.rm = NULL, unk = FALSE,
-  short.names = TRUE, ci.method = c(), cred.mass = 0.95,
-  ci.level = NULL, round.freq = 5, na = NULL, top = NULL,
-  force = FALSE, quietly = FALSE, ...)
+getenumCI2020(
+  veris,
+  enum,
+  by = NULL,
+  na.rm = NULL,
+  unk = FALSE,
+  short.names = TRUE,
+  ci.method = c(),
+  cred.mass = 0.95,
+  ci.level = NULL,
+  round.freq = 5,
+  na = NULL,
+  top = NULL,
+  force = FALSE,
+  quietly = FALSE,
+  ...
+)
 }
 \arguments{
 \item{veris}{A verisr object}

@@ -13,29 +13,30 @@ getenumby(...)
 getenum(...)
 }
 \arguments{
-\item{...}{Arguments passed on to \code{getenumCI2019}
-\describe{
-  \item{veris}{A verisr object}
-  \item{enum}{A veris feature or enumeration to summarize}
-  \item{by}{A veris feature or enumeration to group by}
-  \item{na.rm}{A boolean of whether to include not applicable in the sample set.
+\item{...}{
+  Arguments passed on to \code{\link[=getenumCI2019]{getenumCI2019}}
+  \describe{
+    \item{\code{veris}}{A verisr object}
+    \item{\code{enum}}{A veris feature or enumeration to summarize}
+    \item{\code{by}}{A veris feature or enumeration to group by}
+    \item{\code{na.rm}}{A boolean of whether to include not applicable in the sample set.
 This is REQUIRED if enum has a potential value of NA as there is no 
 'default' method for handling NAs.  Instead, it depends on the 
 hypothesis being tested.}
-  \item{unk}{A boolean referring whether to include 'unknown' in the sample.
+    \item{\code{unk}}{A boolean referring whether to include 'unknown' in the sample.
 The default is 'FALSE' and should rarely be overwritten.}
-  \item{short.names}{A boolean identifying whether to use the full enumeration
+    \item{\code{short.names}}{A boolean identifying whether to use the full enumeration
 name or just the last section. (i.e. action.hacking.variety.SQLi vs
 just SQLi.)}
-  \item{ci.method}{A confidence interval method to use.  Current supported
+    \item{\code{ci.method}}{A confidence interval method to use.  Current supported
 methods are any from binom.confint() or "multinomial".  If unsure
 which to use, use "wilson".}
-  \item{ci.level}{A number from 0 to 1 representing the width of the 
+    \item{\code{ci.level}}{A number from 0 to 1 representing the width of the 
 confidence interval. (default = 0.95)}
-  \item{round.freq}{An integer indicating how many places to round
+    \item{\code{round.freq}}{An integer indicating how many places to round
 the frequency value to. (default = 5)}
-  \item{na}{DEPRECIATED! Use 'na.rm' parameter.}
-}}
+    \item{\code{na}}{DEPRECIATED! Use 'na.rm' parameter.}
+  }}
 }
 \description{
 The main method for summarizes veris enumerations from verisr objects

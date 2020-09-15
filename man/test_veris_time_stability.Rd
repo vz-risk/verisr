@@ -4,8 +4,14 @@
 \alias{test_veris_time_stability}
 \title{Determine if the enumeration is changing over time}
 \usage{
-test_veris_time_stability(chunk, Ea, stable = NULL, direction = NULL,
-  quietly = FALSE, visualize = FALSE)
+test_veris_time_stability(
+  chunk,
+  Ea,
+  stable = NULL,
+  direction = NULL,
+  quietly = FALSE,
+  visualize = FALSE
+)
 }
 \arguments{
 \item{chunk}{getenumCI() object}
