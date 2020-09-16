@@ -1,3 +1,6 @@
+version 2.3.2.009:
+* moved jqr to a suggests to work around a temporary issue
+
 version 2.3.2.008:
 * fixed bug in flatten_verisr()
 
