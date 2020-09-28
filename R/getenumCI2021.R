@@ -323,7 +323,7 @@ getenumCI2021 <- function(veris,
       
       # number of records that have one of our enumerations
       #n <- sum(rowSums(subdf_for_n, na.rm=TRUE) > 0, na.rm=TRUE)
-      n <- length(unique(as.character(subdf_for_n[rowSums(subset(subdf_for_n, select=-c(plus.master_id)), na.rm=TRUE) > 0, "plus.master_id"]))) # counts unique master_ids instead of rows directly
+      n <- length(unique(subdf_for_n[rowSums(subset(subdf_for_n, select=-c(plus.master_id)), na.rm=TRUE) > 0, ][["plus.master_id"]])) # counts unique master_ids instead of rows directly
       # count of each enumeration
     } else if (enum_type == "single_column") {
       ### Removing below warning. If we assume master_id indicates an incident, multiple rows is likely indicative of a desire to count multiple values. - GDB 200619
@@ -336,19 +336,24 @@ getenumCI2021 <- function(veris,
       v <- as.integer(table_v)
       names(v) <- names(table_v)
       
-      n <- sum(v, na.rm=TRUE)
+      ### Just summing v for 'n' is incorrect as it doesn't count unique master_id's. Fixing below using subdf_for_n - GDB 20-09-28
+      #n <- sum(v, na.rm=TRUE)
+      subdf_for_n <- subdf[!is.na(subdf[[enum_enums]]), ]
       # remove unknowns
       if (unk == FALSE) {
-        n <- n - sum(v[grepl("^(.+[.]|)(U|u)nknown$", names(v))], na.rm=TRUE) # Doesn't handle `Bla - unknown` as these bastardized hierarchies shouldn't be in a single character column. - gdb 17-01-30
+        #n <- n - sum(v[grepl("^(.+[.]|)(U|u)nknown$", names(v))], na.rm=TRUE) # Doesn't handle `Bla - unknown` as these bastardized hierarchies shouldn't be in a single character column. - gdb 17-01-30
+        subdf_for_n <- subdf_for_n[tolower(subdf_for_n[[enum_enums]]) != "unknown", ]
       }
       
       # remove NAs
       if (is.null(na) & any(grepl("^(.+[.]|)NA$", names(v)))) { stop("'na' must be specified if any column names end in .NA")}
       if (!is.null(na)) {
         if (na == FALSE) {
-          n <- n - sum(v[grepl("^(.+[.]|)NA$", names(v))], na.rm=TRUE)
+          #n <- n - sum(v[grepl("^(.+[.]|)NA$", names(v))], na.rm=TRUE)
+          subdf_for_n <- subdf_for_n[tolower(subdf_for_n[[enum_enums]]) != "na", ]
         }
       }
+      n <- length(unique(subdf_for_n[["plus.master_id"]]))
     } else {
       stop("class of 'enum' column(s) was not identified, preventing summarization.")
     }
@@ -381,12 +386,14 @@ getenumCI2021 <- function(veris,
               if (!is.null(ncol(ret))) { # if it's a vector and ncol is null, you can skip applying
                 ret <- apply(ret, MARGIN=1, any)
               }
+              # TODO: Count unique master_ids
               ret <- sum(ret, na.rm=TRUE)
               ret
             }))
             names(enum_counts) <- short_names 
           } else {
-            enum_counts <- colSums(subdf[ , enum_enums]) # BUG: This does not sum same-cols in short-name mode.
+            # TODO: Count unique master_ids
+            enum_counts <- colSums(subdf[ , enum_enums]) 
           }
         } else {
           stop("class of 'enum' column(s) was not identified, preventing filtering of top items and further processing")
@@ -450,30 +457,6 @@ getenumCI2021 <- function(veris,
       
       if (ncol(subdf) <= 0) { stop(paste(c("No columns matched feature(s) ", enum, " using regex ", paste0("^",enum,"[.][A-Z0-9][^.]*$"), collapse=" ")))}
       
-## 'n' now calcualted farther above to allow turning 'top' off for small 'n'.      
-#      # we remove unknowns because they should normally not be counted
-#      if (unk == FALSE) {
-#        if (short.names) {
-#          subdf_for_n <- subdf[, !grepl("^(.+[.]|)(U|[A-Za-z]{1,3} - [U|u])nknown$", names(subdf))] # if short names, bla - unknown is removed. See logical section for why. - GDB 17-01-30
-#        } else {
-#          subdf_for_n <- subdf[, !grepl("^(.+[.]|)(U|u)nknown$", names(subdf))] # if long names, bla - unknown is kept in sample. See logical section for why. - GDB 17-01-30
-#        }
-#      } else {
-#        subdf_for_n <- subdf
-#      }
-#      
-#      # Whether to use NAs or not depends on the hypothesis being tested so we require an answer (no default)
-#      if (is.null(na) & any(grep("[.]NA$", names(subdf)))) { stop("'na' must be specified if any column names end in .NA")}
-#      if (!is.null(na)) {
-#        if (na == FALSE) {
-#          subdf_for_n <- subdf_for_n[, !grepl(".NA$", names(subdf_for_n)), ]
-#        }
-#      }
-#      
-#      # number of records that have one of our enumerations
-#      n <- sum(rowSums(subdf_for_n, na.rm=TRUE) > 0, na.rm=TRUE)
-#      # count of each enumeration
-      
       #  if short.names, combine columns with short names. (Rather than summing same short name after calculating column sums, which double-counts in 'x'.)
       if (short.names) {
         short_names <- gsub('^.*[.]([^.]+$)', "\\1", names(subdf))
@@ -494,9 +477,11 @@ getenumCI2021 <- function(veris,
         }))
       }
       
+      # TODO: Count unique master_ids
       v <- colSums(subdf, na.rm=TRUE)  # used instead of a loop or plyr::count to compute x
       
     } else if (enum_type == "single_column") {
+      # TODO: Count unique master_ids - something like table(subdf[distinct(subdf[, c("plus.master_id", enum_enums)])][[enum_enums]])
       table_v <- table(subdf[[enum_enums]])
       v <- as.integer(table_v)
       names(v) <- names(table_v)
@@ -602,7 +587,6 @@ getenumCI2021 <- function(veris,
       }
     } else if (!is.null(ci.method) && ci.method == "bootstrap") {
       if (nrow(enum_subchunk) > 0) {
-        # replacing the one-liner with this because binom.bayes has a bug that errors if the ends (0 or n) are included in x and number of rows > 3
         enum_subchunk[['method']] <- "bootstrap"
         enum_subchunk[['lower']] <- NA
         enum_subchunk[['upper']] <- NA

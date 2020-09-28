@@ -1,3 +1,8 @@
+version 2.3.2.010:
+* Fixed a potential crashing bug in calculating n (would show up 1 instead of actual value) for multinomial enums
+* Improved calculation of n for single-column enums
+* Noticed a bug however where we count column sums rather than unique plus.master_ids. Since in is master_id based this will cause issues. marking areas to fix tomorrow.
+
 version 2.3.2.009:
 * moved jqr to a suggests to work around a temporary issue
 
