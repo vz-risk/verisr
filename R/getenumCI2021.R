@@ -373,7 +373,9 @@ getenumCI2021 <- function(veris,
       } else {
         # start by getting a count of each enumeration
         if (enum_type == "single_column") {
-          enum_counts <- table(subdf[[enum_enums]])
+          #enum_counts <- table(subdf[[enum_enums]])
+          ### Replacing above line with below to ensure unique plus.master_id's are counted, not the column -- GDB 20-09-29
+          enum_counts <- table(subdf[!duplicated(subdf[, c("plus.master_id", enum_enums)]), ][[enum_enums]])
         } else if (enum_type == "multinomial") {
           if (short.names) {
             # convert to short names and keep mapping
@@ -387,7 +389,8 @@ getenumCI2021 <- function(veris,
                 ret <- apply(ret, MARGIN=1, any)
               }
               # TODO: Count unique master_ids
-              ret <- sum(ret, na.rm=TRUE)
+              #ret <- sum(ret, na.rm=TRUE)
+              ret <- sum(!duplicated(data.frame(plus.master_id = subdf[["plus.master_id"]], enum = ret)) & ret)
               ret
             }))
             names(enum_counts) <- short_names 
@@ -433,12 +436,17 @@ getenumCI2021 <- function(veris,
         }
         
         # when we assign 'other' to things not in the top enum list, make sure to not assign it to blank or NA as well
-        not_top_enums <- setdiff(enum_enums, c(top_enums, ''))
-        not_top_enums <- not_top_enums[!is.na(not_top_enums)]
-        if (length(not_top_enums) > 0) {
-          if (enum_type == "single_column") {
+        
+        if (enum_type == "single_column") {
+          not_top_enums <- setdiff(subdf[[enum_enums]], c(top_enums, ''))
+          not_top_enums <- not_top_enums[!is.na(not_top_enums)]
+          if (length(not_top_enums) > 0) {
             subdf[grepl(paste0("^", paste(not_top_enums, collapse="|")), subdf[[enum_enums]]), enum_enums] <- "Other"
-          } else {
+          }
+        } else {
+          not_top_enums <- setdiff(enum_enums, c(top_enums, ''))
+          not_top_enums <- not_top_enums[!is.na(not_top_enums)]
+          if (length(not_top_enums) > 0) {
             if (length(intersect(not_top_enums, names(subdf))) <= 0) {
               subdf[[paste0(enum, ".Other")]] <- FALSE
             } else if (length(intersect(not_top_enums, names(subdf))) == 1) {
@@ -489,7 +497,7 @@ getenumCI2021 <- function(veris,
     } else if (enum_type == "single_column") {
       #table_v <- table(subdf[[enum_enums]])
       ### Replacing above line with below to ensure unique plus.master_id's are counted, not the column -- GDB 20-09-29
-      table_v <- table(subdf[!duplicated(subdf[, c("plus.master_id", enum_enums)])][[enum_enums]])
+      table_v <- table(subdf[!duplicated(subdf[, c("plus.master_id", enum_enums)]), ][[enum_enums]])
       v <- as.integer(table_v)
       names(v) <- names(table_v)
 
