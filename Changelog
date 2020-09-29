@@ -1,3 +1,6 @@
+version 2.3.2.011:
+* Changing several lines to count master_id's instead of summing the column.  This _will_ change counts.
+
 version 2.3.2.010:
 * Fixed a potential crashing bug in calculating n (would show up 1 instead of actual value) for multinomial enums
 * Improved calculation of n for single-column enums

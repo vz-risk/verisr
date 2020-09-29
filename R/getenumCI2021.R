@@ -392,8 +392,10 @@ getenumCI2021 <- function(veris,
             }))
             names(enum_counts) <- short_names 
           } else {
-            # TODO: Count unique master_ids
-            enum_counts <- colSums(subdf[ , enum_enums]) 
+            #enum_counts <- colSums(subdf[ , enum_enums]) 
+            ### Replacing above line with below to ensure unique plus.master_id's are counted, not the column -- GDB 20-09-29
+            enum_counts <- unlist(lapply(enum_enums, function(enum_enum) {length(unique(subdf[subdf[[enum_enum]], ][["plus.master_id"]]))}))
+            names(enum_counts) <- enum_enums
           }
         } else {
           stop("class of 'enum' column(s) was not identified, preventing filtering of top items and further processing")
@@ -453,13 +455,14 @@ getenumCI2021 <- function(veris,
     
     # This allows us to handle numerical/factor/character and logical enumerations
     if (enum_type == "multinomial" | enum_type == "logical") {
-      subdf <- subdf[, enum_enums]
+      subdf <- subdf[, c("plus.master_id", enum_enums)]
       
       if (ncol(subdf) <= 0) { stop(paste(c("No columns matched feature(s) ", enum, " using regex ", paste0("^",enum,"[.][A-Z0-9][^.]*$"), collapse=" ")))}
       
       #  if short.names, combine columns with short names. (Rather than summing same short name after calculating column sums, which double-counts in 'x'.)
       if (short.names) {
-        short_names <- gsub('^.*[.]([^.]+$)', "\\1", names(subdf))
+        short_names <- c("plus.master_id", gsub('^.*[.]([^.]+$)', "\\1", enum_enums))
+        short_names <- c(short_names)
         subdf <- do.call(cbind, lapply(unique(short_names), function(y) { # bind the list of columns returned by lapply
           dups <- grep(paste0("^(",y,")$"), short_names)
           if (length(dups) > 1) {
@@ -476,13 +479,17 @@ getenumCI2021 <- function(veris,
           feature
         }))
       }
-      
-      # TODO: Count unique master_ids
-      v <- colSums(subdf, na.rm=TRUE)  # used instead of a loop or plyr::count to compute x
+
+      #v <- colSums(subdf, na.rm=TRUE)  # used instead of a loop or plyr::count to compute x
+      ### Replacing above line with below to ensure unique plus.master_id's are counted, not the column -- GDB 20-09-29
+      subdf_names <- names(subdf)[2:length(names(subdf))] # remove the initial plus.master_id
+      v <- unlist(lapply(subdf_names, function(enum_enum) {length(unique(subdf[subdf[[enum_enum]], ][["plus.master_id"]]))}))
+      names(v) <- subdf_names
       
     } else if (enum_type == "single_column") {
-      # TODO: Count unique master_ids - something like table(subdf[distinct(subdf[, c("plus.master_id", enum_enums)])][[enum_enums]])
-      table_v <- table(subdf[[enum_enums]])
+      #table_v <- table(subdf[[enum_enums]])
+      ### Replacing above line with below to ensure unique plus.master_id's are counted, not the column -- GDB 20-09-29
+      table_v <- table(subdf[!duplicated(subdf[, c("plus.master_id", enum_enums)])][[enum_enums]])
       v <- as.integer(table_v)
       names(v) <- names(table_v)
 
