@@ -259,6 +259,7 @@ getenumCI2021 <- function(veris,
     
     # for subdf, remove duplicate values to prevent over-counting single incident (by plus.master_id) - GDB 200619
     # using a for loop as we're not recreating anything but assigning existing memory
+    # TODO: Check if this block is necessary. I _think_ we count plus.master_id in all count locations now obviating this (slow) section. - GDB 20-09-29
     if (length(subdf[["master_id"]]) != length(unique(subdf[["plus.master_id"]]))) {
       
       # first separate duplicate from  non-duplicate master_ids
