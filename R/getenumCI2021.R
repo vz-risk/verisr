@@ -542,6 +542,10 @@ getenumCI2021 <- function(veris,
       }
     }
     
+    ### Sanity check
+    if (any(na.omit(enum_subchunk$x > enum_subchunk$n))) 
+      {stop("At least one measurement (x) was greater than the sample size (n). This should never happen.  Please check your data and try again.")}
+    
     # Because we will remove 'x' and 'freq', there must be a ci.method set if n < ci_n and force != TRUE
     if (!force & n < ci_n) {
       if (length(ci.method) <= 0) {
