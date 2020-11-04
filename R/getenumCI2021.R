@@ -732,20 +732,32 @@ getenumCI2021 <- function(veris,
         # Also considered family=beta_binomial2 from https://cran.r-project.org/web/packages/brms/vignettes/brms_customfamilies.html
         #suppressWarnings(requireNamespace('brms'))
         suppressWarnings(require('rstan')) # because rstan has issues if not loaded.
-        m <- suppressWarnings(brms::brm(x | trials(n) ~ (1|enum), 
-                       data=subchunk_to_ci, 
-                       family = binomial(), 
-                       control = list(adapt_delta = .90, max_treedepth=10),
-                       silent=TRUE, refresh=0, open_progress=FALSE)) # suppress most messages
-        mcmc <- tidybayes::spread_draws(m, b_Intercept, r_enum[enum,])
-        mcmc$condition_mean <- logit2prob(mcmc$b_Intercept + mcmc$r_enum)
+        #m <- suppressWarnings(brms::brm(x | trials(n) ~ (1|enum), 
+        #               data=subchunk_to_ci, 
+        #               family = binomial(), 
+        #               control = list(adapt_delta = .90, max_treedepth=10),
+        #               silent=TRUE, refresh=0, open_progress=FALSE)) # suppress most messages
+        #mcmc <- tidybayes::spread_draws(m, b_Intercept, r_enum[enum,])
+        #mcmc$condition_mean <- logit2prob(mcmc$b_Intercept + mcmc$r_enum)
+        Prior <- brms::set_prior("student_t(3,0,1.6)", class = "b") # student_t because this is a logic so continuous and infinit. 3 deg of freedom (brms default), centered on 0, 1.6 because thats the logic scaled value brms recommends
+        m <- suppressWarnings(brms::brm(x | trials(n) ~ 0 + (enum), 
+                     family=binomial(link="logit"), # use logit because it mapps 0-1 to -inf to +inf which helps make sampling work better
+                     prior=Prior,
+                     data=subchunk_to_ci,
+                     control = list(adapt_delta = .90, max_treedepth=10),
+                     silent=TRUE, refresh=0, open_progress=FALSE))
+        mcmc <- tidybayes::gather_draws(m, `^b_enum.*`, regex=TRUE)
+        mcmc$condition_mean <- logit2prob(mcmc$.value)
         mcmc <- tidybayes::median_qi(mcmc, .width=cred.mass)
-        # brms rewrites the column names. We're going to _try_ and fix that by mapping them back to the chunk enums.
-        # this may or may not work since we can't be _sure_ they sort the same. 
-        # As such, this is a hack until a mapping can be extracted from the model object or the same function used internally can be used to create a mapping.
+        mcmc$enum <- gsub("^b_enum(.+)$", "\\1", mcmc$.variable)
+        ## brms rewrites the column names. We're going to _try_ and fix that by mapping them back to the chunk enums.
+        ## this may or may not work since we can't be _sure_ they sort the same. 
+        ## As such, this is a hack until a mapping can be extracted from the model object or the same function used internally can be used to create a mapping.
         #mcmc$enum <- plyr::mapvalues(enum, sort(unique(enum)), sort(levels(chunk$enum)))
-        # Per https://discourse.mc-stan.org/t/brms-non-standard-variable-name-modification/11412
+        ## Per https://discourse.mc-stan.org/t/brms-non-standard-variable-name-modification/11412
         mcmc$enum <- plyr::mapvalues(mcmc$enum, gsub("[ \t\r\n]", ".", as.character(unique(subchunk_to_ci$enum))), as.character(unique(subchunk_to_ci$enum)), warn_missing=FALSE) # it would be nice to not have to import plyr, but oh well. - GDB 191123
+        mcmc$enum <- plyr::mapvalues(mcmc$enum, gsub("[ ]", "", as.character(unique(subchunk_to_ci$enum))), as.character(unique(subchunk_to_ci$enum)), warn_missing=FALSE) 
+        mcmc$enum <- plyr::mapvalues(mcmc$enum, gsub("[*]", "MU", as.character(unique(subchunk_to_ci$enum))), as.character(unique(subchunk_to_ci$enum)), warn_missing=FALSE) 
       }
       
       # separate the values back into their respective subchunks
