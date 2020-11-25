@@ -17,9 +17,9 @@ test_that("a new verisr object has these columns", {
   expect_equal(("victim.industry2" %in% names(vr)), TRUE)
   expect_equal(("victim.orgsize.Small" %in% names(vr)), TRUE)
   expect_equal(("victim.orgsize.Large" %in% names(vr)), TRUE)
+  expect_equal(("victim.orgsize.Unknown" %in% names(vr)), TRUE)
   expect_equal(("victim.industry3" %in% names(vr)), TRUE)
   expect_equal(("actor.partner.industry2" %in% names(vr)), TRUE)
-  expect_equal(("pattern" %in% names(vr)), TRUE)
 })
 
 test_that("a verisr object counts actors properly: getenum(\"actor\"", {

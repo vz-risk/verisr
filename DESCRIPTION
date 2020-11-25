@@ -1,7 +1,7 @@
 Package: verisr
 Type: Package
 Title: Tools for working with VERIS objects
-Version: 2.3.2.013
+Version: 2.3.2.014
 Date: 2020-06-26
 Authors@R: c( person("Gabriel", "Bassett", email = "gabriel.bassett@verizon.com",
     role = c("cre", "aut")))
@@ -27,6 +27,7 @@ Suggests:
     binom (>= 1.1-1),
     brms (>= 2.10.0),
     dplyr (>= 0.8.3),
+    furrr (>= 0.2.1),
     infer (>= 0.5.1),
     jqr (>= 1.1.0),
     moderndive (>= 0.4.0),

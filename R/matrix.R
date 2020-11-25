@@ -122,5 +122,6 @@ getpattern <- function(veris) {
   })
   colnames(pats) <- paste0("pattern.", patcols)
   #retval <- factor(retval, levels=patcols, ordered=T)  # this is the one, bloody, factor in the whole dataframe.  it's pointless.  Strongly considering removing - GDB 200619
-  cbind(data.table(pattern=retval), pats)
+  #pats <- cbind(data.table(pattern=retval), pats) # removing single column. It causes confusion. - GDB 201123
+  return(pats)
 }

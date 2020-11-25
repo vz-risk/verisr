@@ -1,3 +1,9 @@
+version 2.3.2.014:
+* Removed 'patterns' column
+* Added value_chain.Intermediate columns. in json2veris. Verisr issue #20
+* Added orgsize.Unknown. verisr issue #16
+* Improved error associated with no inputted files per verisr issue #12
+
 version 2.3.2.013:
 * Updated the MCMC model in getenumCI2021 (untested).  This model removes the intercept + group effects in favor of just the groups.
   This basically makes all enumeratios independent. To make them dependent, each enum could be treated as an input to the model w/ an associated distribution outside of the plate. However this would require feeding in all rows of data as measurements. The benefit is it could potentially capture inter-enumeration interactions better.

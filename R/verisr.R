@@ -30,6 +30,7 @@
 #'   * *victim.industry3* same, first 3 digits
 #'   * *victim.orgsize* returns "Large" and "Small" enumerations
 #'   * *discovery_method* will return top level discovery_method categories
+#'   * *value_chain* will return top level value_chain categories
 #' 
 #' The victim.secondary.victim_id, external.actor.region, and any other free
 #' text field that can be repeated is being collapsed into a single string 
@@ -63,8 +64,7 @@
 #'                     schema="~/veris/verisc-local.json")
 #' }
 json2veris <- function(dir=c(), files=c(), schema=NULL, progressbar=F) {
-  
-  
+
   savetime <- proc.time()
   # if no schema, try to load it from github
   if (missing(schema)) {
@@ -75,6 +75,7 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, progressbar=F) {
   }  
   # create listing of files
   jfiles <- data.frame(jfile = unique(c(files, unlist(sapply(dir, list.files, pattern = "zip$|json$", full.names=T))))) #files and dirs
+  if (nrow(jfiles) == 0) {stop("No json or zip files were found in the directories or files provided. Please double check your input.")}
   jfiles[['ftype']] <- "file"
   
   ### Now we're going to try and parse out the zip files and turn them into text strings
@@ -136,7 +137,8 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, progressbar=F) {
   # in each file, pull out the values and fill in the data table
   event_chain <- vector("list", numfil) # event_chain will be the only list column, so create teh column separately to add back in. - GDB 180118
   for (i in 1:nrow(jfiles)) {
-    #message(i) # DEBUG
+  #furrr::future_map(1:nrow(jfiles), function(i) { # Tried parallelization, however since the `veris` object is not shared writable across futures, it doesn't get written correctly. - GDB 201123
+      #message(i) # DEBUG
     # we have to use rjson here because other parsers fail
     if (as.character(jfiles[i, "ftype"] == "file")) {
       json <- rjson::fromJSON(file=as.character(jfiles[i, "jfile"]), method='C') 
@@ -179,6 +181,7 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, progressbar=F) {
     }
     if (!is.null(pb)) setTxtProgressBar(pb, i)
   }
+#  }) # pairs with furrr::map( above.
   if (!is.null(pb)) close(pb)
   # veris <- veris[, !grepl("event_chain", names(veris))]
   veris[, (grep("event_chain[.]", names(veris), value=TRUE)) := NULL]
@@ -214,6 +217,7 @@ post.proc <- function(veris) {
              "victim.employee_count.Over 100000", "victim.employee_count.Large")
   veris[ , victim.orgsize.Small := rowSums(veris[ ,small, with=FALSE]) > 0]
   veris[ , victim.orgsize.Large := rowSums(veris[ ,large, with=FALSE]) > 0]
+  veris[ , victim.orgsize.Unknown := rowSums(veris[ ,c(small,large), with=FALSE]) > 0]
   # victim.industry
   ind2 <- substring(unlist(veris[ ,"victim.industry", with=F], use.names=F), 1L, 2L)
   # want an enumeration now, instead of a single list.
@@ -536,7 +540,11 @@ geta4names <- function() {
                 "P "="Person", "T "="Kiosk/Term", "Un"="Unknown", "E"="Embedded")
   asset <- setNames(paste('asset.assets.variety', names(assetmap), sep='.'),
                     paste('asset.variety', assetmap, sep='.'))
-  c(actor, action, asset, attribute, discovery_method)  
+  value_chain <- convenience(paste('value_chain',
+                                   c('Development', 'Non-distribution services', 'Targeting', 
+                                     'Distribution', 'Cash-out', 'Money laundering'),
+                                   sep="."))
+  c(actor, action, asset, attribute, discovery_method, value_chain)  
 }
 
 
