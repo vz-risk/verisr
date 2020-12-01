@@ -25,7 +25,7 @@ To begin, load the package and point it at a directory of JSON files storing VER
 
 ```{r}
 library(verisr)
-vcdb.dir <- "../VCDB/data/json/"
+vcdb.dir <- "../VCDB/data/json/validated/"
 # may optionally load a custom json schema file.
 if (interactive()) { # show progress bar if the session is interactive
   vcdb <- json2veris(vcdb.dir, progressbar=TRUE)

@@ -62,7 +62,7 @@ if (window.hljs && document.readyState && document.readyState === "complete") {
 devtools::install_github(&quot;jayjacobs/verisr&quot;)</code></pre>
 <p>To begin, load the package and point it at a directory of JSON files storing VERIS data.</p>
 <pre class="r"><code>library(verisr)
-vcdb.dir &lt;- &quot;../VCDB/data/json/&quot;
+vcdb.dir &lt;- &quot;../VCDB/data/json/validated/&quot;
 # may optionally load a custom json schema file.
 if (interactive()) { # show progress bar if the session is interactive
   vcdb &lt;- json2veris(vcdb.dir, progressbar=TRUE)
