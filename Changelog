@@ -1,3 +1,6 @@
+version 2.3.2.015:
+* performance improvements to getenumCI2021()
+
 version 2.3.2.014:
 * Removed 'patterns' column
 * Added value_chain.Intermediate columns. in json2veris. Verisr issue #20

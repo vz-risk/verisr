@@ -151,11 +151,15 @@ getenumCI2021 <- function(veris,
   } else {
     df <- veris
   }
+  rm(veris)
   
   # legacy veris objects have 'pattern' as an ordered factor for some reason but it can cause problems so removing.
-  if ("pattern" %in% names(veris)) {
+  if ("pattern" %in% names(df)) {
     df[["pattern"]] <- as.character(df[["pattern"]])
   }
+  
+  # filter out unneeded columns for memory sake
+  df <- df[, c("plus.master_id", grep(paste0("^", enum, "|", enum, "[.][A-Z0-9][^.]|", by, "|", by, "[.][A-Z0-9][^.]$"), names(df), value=TRUE))]
 
   # for backwards compatibility
   if (!is.null(ci.level)) {
@@ -263,7 +267,7 @@ getenumCI2021 <- function(veris,
     if (length(subdf[["master_id"]]) != length(unique(subdf[["plus.master_id"]]))) {
       
       # first separate duplicate from  non-duplicate master_ids
-      rows_per_master_id <- table(veris$plus.master_id) # this is slow
+      rows_per_master_id <- table(df$plus.master_id) # this is slow
       
       dup_subdf <- subdf[subdf[["plus.master_id"]] %in% names(rows_per_master_id[rows_per_master_id > 1]), ]
       
