@@ -191,12 +191,15 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, progressbar=F) {
   #  Instead, need to standardize NAs in veris.
   # colnames(veris) <- gsub('Not Applicable', 'NA', colnames(veris), ignore.case=TRUE) # this causes more problems than it solves. 17-01-17 GDB
   veris <- post.proc(veris)
-  veris <- as.data.frame(veris) # convert data.table to data.frame because data tables are evil. - 17-01-17
+  gc(verbose=FALSE)
+  #veris <- as.data.frame(veris) # convert data.table to data.frame because data tables are evil. - 17-01-17
+  data.table::setDF(veris)
   # veris[['plus.event_chain']] <- event_chain
   class(veris) <- c("verisr", class(veris))
   if(progressbar) {
     print(proc.time() - savetime)
   }
+  gc(verbose=FALSE)
   veris
 }
 
@@ -239,28 +242,41 @@ post.proc <- function(veris) {
   veris[ , victim.industry3 := substring(unlist(veris[ ,"victim.industry", with=FALSE], 
                                                 use.names=F), 1L, 3L)]
 
-  # victim.industry.name
+  ### victim.industry.name
   data(industry2, envir = environment(), package='verisr')
-  veris$victim.industry.name <- sapply(veris$victim.industry2, function(x) {
-    ifelse(x %in% industry2$code, industry2$shorter[which(industry2$code==x)], "Unknown")
-  })
+  #veris$victim.industry.name <- sapply(veris$victim.industry2, function(x) {
+  #  ifelse(x %in% industry2$code, industry2$shorter[which(industry2$code==x)], "Unknown")
+  #})
+  ind_updated <- industry2[, c("code", "shorter")]
+  names(ind_updated) <- c("victim.industry2", "victim.industry.name")
+  ind_updated <- data.table::as.data.table(ind_updated)
+  veris[ind_updated, on="victim.industry2", victim.industry.name := i.victim.industry.name]
+  data.table::set(veris,which(is.na(veris[["victim.industry.name"]])),"victim.industry.name","Unknown")
   
   # actor.partner.industry
   veris[ , actor.partner.industry2 := substring(unlist(veris[ ,"actor.partner.industry", with=FALSE], 
                                                 use.names=F), 1L, 2L)]
   veris[ , actor.partner.industry3 := substring(unlist(veris[ ,"actor.partner.industry", with=FALSE], 
                                                 use.names=F), 1L, 3L)]
-  veris <- cbind(veris, getpattern(veris))
+  
+  # patterns
+  #veris <- cbind(veris, getpattern(veris))
+  patterns <- data.table::as.data.table(getpattern(veris))
+  veris <- data.table::setDT(unlist(list(veris, patterns), recursive = FALSE), check.names=FALSE)
+  gc(verbose=FALSE)
+  
   print("veris dimensions")
   print(dim(veris))
-  fails <- sapply(colnames(veris), function(x) is.logical(veris[[x]]) & any(is.na(veris[[x]])))
+  fails <- sapply(colnames(veris), function(x) is.logical(veris[[x]]) & any(is.na(veris[[x]]))) # takes 6gb ram but gc() cleans up
+  gc(verbose=FALSE)
   print(which(fails))
   if (any(fails)) {
     for (i in which(fails)) {
       set(veris, i=which(is.na(veris[[i]])), j=i, value=FALSE)
     }
   } 
-  fails <- sapply(colnames(veris), function(x) is.logical(veris[[x]]) & any(is.na(veris[[x]])))
+  fails <- sapply(colnames(veris), function(x) is.logical(veris[[x]]) & any(is.na(veris[[x]]))) # takes 6gb ram but gc() cleans up
+  gc(verbose=FALSE)
   print(which(fails))
   
   # Add this to ensure that if the 'confidentiality' section is empty, data_disclosure is marked 'no' (i.e. not a breach) - GDB 200428
@@ -271,7 +287,8 @@ post.proc <- function(veris) {
       v <- gsub("FALSE", "", v) # make "FALSE" into ""
       v <- gsub("0", "", v) # makes numeric zero columns 0
       all(na.omit(v) == "") # are any not NA and not FALSE?
-  }))
+  })) # takes 6GB of ram
+  gc(verbose=FALSE)
   
   veris
 }
