@@ -1,3 +1,7 @@
+version 2.3.2.017:
+* fixed missing 'method' column in getenumCI2021() when na.rm=FALSE and method = "bootstrap"
+* fixed issue with getenumCI2021() counting 'NA' in x but not in 'n'
+
 version 2.3.2.016:
 * Performance improvements in json2veris()
 * NOTE: as the veris data gets longer with many columns, parquet files may become the prefered on-disk format.
@@ -139,7 +143,7 @@ version 2.3.1.0006:
 * Started on feature updates to getenumCI2020
 
 version 2.3.1.0005:
-* Updated getenumCI().
+* Updated getenumCI() 
 
 version 2.3.1.0004:
 * Updated documentation.

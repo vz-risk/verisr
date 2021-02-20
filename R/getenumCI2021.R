@@ -158,6 +158,9 @@ getenumCI2021 <- function(veris,
     df[["pattern"]] <- as.character(df[["pattern"]])
   }
   
+  # Sanity check since previous getenumCI's didn't require it.
+  if (!"plus.master_id" %in% names(df)) {stop("'plus.master_id' must be in the veris object passed to getenumCI().")}
+  
   # filter out unneeded columns for memory sake
   df <- df[, c("plus.master_id", grep(paste0("^", enum, "|", enum, "[.][A-Z0-9][^.]|", by, "|", by, "[.][A-Z0-9][^.]$"), names(df), value=TRUE))]
 
@@ -235,6 +238,7 @@ getenumCI2021 <- function(veris,
     } else { # catchall for by_type == 'none', i.e. keep the whole df
       subdf <- df
     }
+    subdf[unlist(lapply(subdf, is.logical))][is.na(subdf[unlist(lapply(subdf, is.logical))])] <- FALSE # Replace NA with FALSE to protect against counting errors later (multinomial 'n' removes NAs in sum). - GDB 21-02-20
     
     # select the columns that match the enumeration and characterize it's/their type
     enum_enums <- grep(paste0("^",enum,"[.][A-Z0-9][^.]*$"), names(subdf), value=TRUE)
@@ -337,7 +341,7 @@ getenumCI2021 <- function(veris,
       #   if (length(incident) > 1) {warning(paste0("Incident ", master_id, " has ", length(incident), " values (", paste(incident, collapse=","),
       #                                             ") for column ", enum_enums, ".  This will cause overcounting of this incident."))}
       # })
-      table_v <- table(subdf[[enum_enums]])
+      table_v <- table(subdf[[enum_enums]], useNA="no") # useNA="no" added 210220 - GDB
       v <- as.integer(table_v)
       names(v) <- names(table_v)
       
@@ -393,16 +397,16 @@ getenumCI2021 <- function(veris,
               if (!is.null(ncol(ret))) { # if it's a vector and ncol is null, you can skip applying
                 ret <- apply(ret, MARGIN=1, any)
               }
-              # TODO: Count unique master_ids
               #ret <- sum(ret, na.rm=TRUE)
-              ret <- sum(!duplicated(data.frame(plus.master_id = subdf[["plus.master_id"]], enum = ret)) & ret)
+              ### Replacing above line with below to count master_ids
+              ret <- sum(!duplicated(data.frame(plus.master_id = subdf[["plus.master_id"]], enum = ret)) & ret, na.rm=TRUE) # na.rm=TRUE added 210220
               ret
             }))
             names(enum_counts) <- short_names 
           } else {
             #enum_counts <- colSums(subdf[ , enum_enums]) 
             ### Replacing above line with below to ensure unique plus.master_id's are counted, not the column -- GDB 20-09-29
-            enum_counts <- unlist(lapply(enum_enums, function(enum_enum) {length(unique(subdf[subdf[[enum_enum]], ][["plus.master_id"]]))}))
+            enum_counts <- unlist(lapply(enum_enums, function(enum_enum) {length(unique(subdf[subdf[[enum_enum]] & !is.na(subdf[[enum_enum]]), ][["plus.master_id"]]))}))
             names(enum_counts) <- enum_enums
           }
         } else {
@@ -496,13 +500,14 @@ getenumCI2021 <- function(veris,
       #v <- colSums(subdf, na.rm=TRUE)  # used instead of a loop or plyr::count to compute x
       ### Replacing above line with below to ensure unique plus.master_id's are counted, not the column -- GDB 20-09-29
       subdf_names <- names(subdf)[2:length(names(subdf))] # remove the initial plus.master_id
-      v <- unlist(lapply(subdf_names, function(enum_enum) {length(unique(subdf[subdf[[enum_enum]], ][["plus.master_id"]]))}))
+      ## Adding ` & !is.na(subdf[[enum_enum]])` below to prevent 'na' from being counted.
+      v <- unlist(lapply(subdf_names, function(enum_enum) {length(unique(subdf[subdf[[enum_enum]] & !is.na(subdf[[enum_enum]]), ][["plus.master_id"]]))}))
       names(v) <- subdf_names
       
     } else if (enum_type == "single_column") {
       #table_v <- table(subdf[[enum_enums]])
       ### Replacing above line with below to ensure unique plus.master_id's are counted, not the column -- GDB 20-09-29
-      table_v <- table(subdf[!duplicated(subdf[, c("plus.master_id", enum_enums)]), ][[enum_enums]])
+      table_v <- table(subdf[!duplicated(subdf[, c("plus.master_id", enum_enums)]), ][[enum_enums]], useNA="no") # useNA="no" added 210220 - GDB
       v <- as.integer(table_v)
       names(v) <- names(table_v)
 
@@ -672,6 +677,7 @@ getenumCI2021 <- function(veris,
           # return
           bootstrap_distribution
         })
+        unk_subchunk[['method']] <- "bootstrap"
         unk_subinfer <- do.call(rbind, lapply(unk_subdist, infer::get_confidence_interval, level=cred.mass, type="percentile"))
         names(unk_subinfer) <- c("lower", "upper")
         unk_subchunk <- cbind(unk_subchunk, unk_subinfer)
@@ -706,6 +712,7 @@ getenumCI2021 <- function(veris,
             # return
             bootstrap_distribution
           })
+          na_subchunk[['method']] <- "bootstrap"
           na_subinfer <- do.call(rbind, lapply(na_subdist, infer::get_confidence_interval, level=cred.mass, type="percentile"))
           names(na_subinfer) <- c("lower", "upper")
           na_subchunk <- cbind(na_subchunk, na_subinfer)
