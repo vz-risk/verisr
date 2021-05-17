@@ -51,6 +51,7 @@ for convenience:
   * *victim.industry3* same, first 3 digits
   * *victim.orgsize* returns "Large" and "Small" enumerations
   * *discovery_method* will return top level discovery_method categories
+  * *value_chain* will return top level value_chain categories
 
 The victim.secondary.victim_id, external.actor.region, and any other free
 text field that can be repeated is being collapsed into a single string 

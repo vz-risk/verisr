@@ -1,3 +1,6 @@
+version 2.3.2.018:
+* Added models for classifying incidents into the 2021 dbir patterns.
+
 version 2.3.2.017:
 * fixed missing 'method' column in getenumCI2021() when na.rm=FALSE and method = "bootstrap"
 * fixed issue with getenumCI2021() counting 'NA' in x but not in 'n'

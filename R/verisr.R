@@ -261,8 +261,15 @@ post.proc <- function(veris) {
   
   # patterns
   #veris <- cbind(veris, getpattern(veris))
-  patterns <- data.table::as.data.table(getpattern(veris))
-  veris <- data.table::setDT(unlist(list(veris, patterns), recursive = FALSE), check.names=FALSE)
+  #patterns <- data.table::as.data.table(getpattern(veris)) # 2014 patterns
+  #veris <- data.table::setDT(unlist(list(veris, patterns), recursive = FALSE), check.names=FALSE)
+  veris <- verisr::add_patterns(veris, # all arguements below are the defaults.
+                                centroids = verisr:::models_to_centroids(), # 2021 patterns
+                                prefix = "pattern",
+                                replace = TRUE, 
+                                clusters = FALSE, 
+                                threshold = 0.1,
+                                veris_update_f = NULL) # NOTE: this will need to change for verisr past 1.3.5
   gc(verbose=FALSE)
   
   print("veris dimensions")
