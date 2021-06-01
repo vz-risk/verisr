@@ -26,6 +26,7 @@ models_to_centroids <- function() {
 #' @param veris veris object to cluster
 #' @param centroids skmeans cluster prototypes
 #' @return veris, centroids
+#' @export
 pattern_1.3.4_to_1.3.5 <- function(veris, centroids) {
   ### Because VERIS changes, the columns used to cluster may change.
   ### We can map renamed enumerations from VERIS to their new name using this mapping

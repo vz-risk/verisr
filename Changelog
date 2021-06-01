@@ -1,3 +1,6 @@
+version 2.3.2.019:
+* export pattern_1.3.4_to_1.3.5
+
 version 2.3.2.018:
 * Added models for classifying incidents into the 2021 dbir patterns.
 
