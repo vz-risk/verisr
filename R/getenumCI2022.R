@@ -1,8 +1,7 @@
 #' Summarizes veris enumerations from verisr objects
 #' 
-#' This is the primary analysis function for veris.  It conducts binomial
-#'     hypothesistests on veris data to enumerate the frequency of a given 
-#'     enumeration or set of enumerations within a feature. (For example, 
+#' This is the primary analysis function for veris.  calculates the point 
+#'    estimate and credible intervals for enumerations. (For example, 
 #'     'Malware', 'Hacking', etc within 'action').
 #'     
 #' The 'by' parameter allows enumerating one feature by another, (for example
@@ -25,6 +24,8 @@
 #' While getenumCI() may work on other types of dataframes, it was designed for
 #'     verisr dataframes and data.tables.  It is not tested nor recommended for
 #'     any other type.
+#'     
+#' 
 #' 
 #' @param veris A verisr object
 #' @param enum A veris feature or enumeration to summarize
@@ -78,7 +79,7 @@
 #' getenumCI(vcdb, "action.social.variety.Phishing")
 #' getenumCI(vcdb, "actor.*.motive", ci.method="wilson", na.rm=FALSE)
 #' rm(vcdb)
-getenumCI2021 <- function(veris, 
+getenumCI2022 <- function(veris, 
                       enum, 
                       by=NULL,
                       na.rm = NULL, 

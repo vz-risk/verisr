@@ -530,7 +530,9 @@ nameveris <- function(json, a4, vtype) {
   olist <- nameveris.recurs(json, vtype)
   # start simple, with the actor, action, asset and attribute fields
   for(a4name in names(a4)) {
-    if (any(grepl(paste0('^', a4[a4name]), names(olist)))) {
+    if (any(grepl(paste0('^', a4[a4name]), 
+                  setdiff(names(olist), paste0("attribute.confidentiality.data_disclosure.", c("No", "Potentially", "Other", "Unknown")))
+    ))) {
       olist[[a4name]] = TRUE
     }
   }  

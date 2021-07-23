@@ -1,3 +1,7 @@
+version 2.3.2.020:
+* fixed bug in add_patterns()
+* fixed bug in nameveris()
+
 version 2.3.2.019:
 * export pattern_1.3.4_to_1.3.5
 

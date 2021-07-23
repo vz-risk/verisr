@@ -4,7 +4,7 @@
 #' @return A matrix of of skmeans centroids with one row per centroid
 models_to_centroids <- function() {
   #data("models", envir=environment())
-  load(system.file("data", "2021_pattern_models.Rda", package="verisr"), verbose=FALSE)
+  load(system.file("data", "2021_pattern_models.rda", package="verisr"), verbose=FALSE)
   
   non_breach_proto <- models$non_breach$prototypes
   breach_proto <- models$breach$prototypes
@@ -62,14 +62,14 @@ pattern_1.3.4_to_1.3.5 <- function(veris, centroids) {
 #' 
 #' This function works by scoring the incidents according to the skmeans clusters.  Not, it can be rather slow on large data sets.
 #'
-#' @param veris  A verisr dataframe
+#' @param veris  A verisr data.table
 #' @param centroids  A matrix of of skmeans centroids with one row per centroid. If null, (the default), the 2021 DBIR pattern centroids will be used.
 #' @param prefix  The predicate of the column name to use for the patterns
 #' @param replace  Whether to remove previously existing columns with the same predicate before adding the patterns
 #' @param clusters  If TRUE, will add the clusters to the returned veris object as 'cluster.X' with a value of the cosign distance to the cluster
 #' @param threshold The ratio of the difference of cluster-to-incident distances and the smallest cluster-to-incident distance. Defaults to 1/10th (i.e. the difference must be 1/10th the distance to the incident. This results in two percent of clusters kept in 2020 data)
 #' @param veris_update_f A function to apply to centoids and veris to handle updates to veris after the clusters are defined.  It must take a veris object and a centroid and return a list of a veris object and centroid.  Because veris adds, removes, and changes enumerations each year, this function modifies the data and centroids, (currently based on veris 1.3.5) to be compatible with the current version of VERIS.
-#' @return a verisr object with the columns added
+#' @return a data.table object with the columns added
 #' @export
 add_patterns <- function(veris, 
                          centroids=NULL, 
@@ -148,15 +148,20 @@ add_patterns <- function(veris,
   master_ids <- chunk$plus.master_id
   
   ## convert verisr to matrix
-  chunk <- chunk[, cols_to_cluster]
+  chunk <- chunk[, ..cols_to_cluster]
   col_names <- names(chunk)
   chunk <- as.matrix(chunk)
   colnames(chunk) <- col_names
   rownames(chunk) <- master_ids
+  ## It's possible for columns that are not in the schema to be in both chunk and the centroids
+  ## In this case, the column will contain 'NAs' where the value wasn't specified
+  ## If we leave them, they will cause clustering issues.
+  ## Implicitly those should all be FALSE so we fill that in here. - GDB 210723
+  chunk[is.na(chunk)] <- FALSE
   
   ## calculate cosign distance. (Small is better. Took me a while to figure that out)
   all_pred <- skmeans::skmeans_xdist(
-    x=chunk[rowSums(chunk) > 0, ], 
+    x=chunk[rowSums(chunk, na.rm=TRUE) > 0, ], 
     y=centroids)
   
   ### create a single dataframe of cluster distances
@@ -172,7 +177,17 @@ add_patterns <- function(veris,
   patterns <- dplyr::filter(patterns, pattern != paste0(prefix, ".NA")) 
   # DDoS is the only incident that can be included below the quality threshold. Because of that, it's picking up low-quality 
   #   Incidents that should be in other clusters.  Here we remove DDoS w/o DDoS so and let them go into the next likely pattern
-  patterns <- dplyr::left_join(patterns, vz[ , c("plus.master_id", "action.hacking.variety.DoS", "action.malware.variety.DoS")], by=c("plus.master_id"="plus.master_id"))
+  patterns <- dplyr::left_join(patterns, 
+                               # Because 'veris' isn't flattened, we use chunk for the DoS columns.  However chunk is a matrix and
+                               #    lacks 'plus.master_id', so we convert to a tibble and add plus.master_id.
+                               # Little worried about performance, but chunk should be far smaller due to fewer columns and all but 1 are logical.
+                               # GDB 210723
+                               dplyr::mutate(
+                                 tibble::as_tibble(chunk[ , c("action.hacking.variety.DoS", "action.malware.variety.DoS")]),
+                                 `plus.master_id` = rownames(chunk)
+                               ),
+                               by=c("plus.master_id"="plus.master_id")
+              )
   patterns <- dplyr::mutate(patterns, value = ifelse(
     pattern == paste0(prefix, ".", "Denial of Service") & !(action.hacking.variety.DoS | action.malware.variety.DoS), # if it's DoS w/o DOS
     1, # Make DoS the longest possible distance
@@ -200,7 +215,7 @@ add_patterns <- function(veris,
   
   ### If replace, remove the existing prefix columns
   if (replace) {
-    veris <- veris[, !grepl(paste0("^", prefix), names(veris))]
+    veris <- veris[, !grepl(paste0("^", prefix), names(veris)), with = FALSE]
   }
   
   
@@ -215,36 +230,38 @@ add_patterns <- function(veris,
   
   
   ### Need to remove "NA's" before the sanity checks
-  veris[grepl(paste0("^", prefix), names(veris))][is.na(veris[grepl(paste0("^", prefix), names(veris))])] <- FALSE
-  
+  na_replace = function(v,value=FALSE) { v[is.na(v)] = value; v }
+  veris <- veris[, 
+        c(grep(paste0("^", prefix), names(veris), value=TRUE)) := lapply(.SD, na_replace), 
+        .SDcols= grep(paste0("^", prefix), names(veris), value=TRUE)]
   
   ### Sanity checks
   ## Ensure the core tenant of the pattern is met
-  veris[
-    veris[[paste0(prefix, ".Privilege Misuse")]]  & !veris$action.Misuse, # misuse without misuse
-    paste0(prefix, ".Privilege Misuse")] <- FALSE
-  veris[
-    veris[[paste0(prefix, ".Miscellaneous Errors")]]  & !veris$action.Error, # error without error
-    paste0(prefix, ".Miscellaneous Errors")] <- FALSE
-  veris[
-    veris[[paste0(prefix, ".Social Engineering")]]  & !veris$action.Social, # phishing without Social action
-    paste0(prefix, ".Social Engineering")] <- FALSE
-  veris[
-    veris[[paste0(prefix, ".System Intrusion")]]  & !(veris$action.Hacking | veris$action.Malware), # Intrusion without hacking/malware
-    paste0(prefix, ".System Intrusion")] <- FALSE
+  veris <- veris[
+    veris[[paste0(prefix, ".Privilege Misuse")]]  & !veris[["action.Misuse"]], # misuse without misuse
+    c(paste0(prefix, ".Privilege Misuse")) := FALSE]
+  veris <- veris[
+    veris[[paste0(prefix, ".Miscellaneous Errors")]]  & !veris[["action.Error"]], # error without error
+    paste0(prefix, ".Miscellaneous Errors") := FALSE]
+  veris <- veris[
+    veris[[paste0(prefix, ".Social Engineering")]]  & !veris[["action.Social"]], # phishing without Social action
+    paste0(prefix, ".Social Engineering") := FALSE]
+  veris <- veris[
+    veris[[paste0(prefix, ".System Intrusion")]]  & !(veris[["action.Hacking"]] | veris[["action.Malware"]]), # Intrusion without hacking/malware
+    paste0(prefix, ".System Intrusion") := FALSE]
   #veris[
   #  veris[[paste0(prefix, ".Crimeware")]]  & !veris$action.Malware, # Crimeware without malware
   #  paste0(prefix, ".Crimeware")] <- FALSE
-  veris[
-    veris[[paste0(prefix, ".Basic Web Application Attacks")]]  & !(veris$`asset.assets.variety.S - Web application` | 
-                                                       veris$`action.hacking.vector.Web application` |
-                                                       veris$`action.malware.vector.Web download` |   
-                                                       veris$`action.malware.vector.Web drive-by`  |
-                                                       veris$action.social.vector.Website), # webapp without web application
-    paste0(prefix, ".Basic Web Application Attacks")] <- FALSE
-  veris[
-    veris[[paste0(prefix, ".Lost and Stolen Assets")]]  & !(veris$action.Physical | veris$action.error.variety.Loss), # loss w/o physical or loss
-    paste0(prefix, ".Lost and Stolen Assets")] <- FALSE
+  veris <- veris[
+    veris[[paste0(prefix, ".Basic Web Application Attacks")]]  & !(veris[["`asset.assets.variety.S - Web application"]] | 
+                                                       veris[["action.hacking.vector.Web application"]] |
+                                                       veris[["action.malware.vector.Web download"]] |   
+                                                       veris[["action.malware.vector.Web drive-by"]]  |
+                                                       veris[["action.social.vector.Website"]]), # webapp without web application
+    paste0(prefix, ".Basic Web Application Attacks") := FALSE]
+  veris <- veris[
+    veris[[paste0(prefix, ".Lost and Stolen Assets")]]  & !(veris[["action.Physical"]] | veris[["action.error.variety.Loss"]]), # loss w/o physical or loss
+    paste0(prefix, ".Lost and Stolen Assets") := FALSE]
 ### NOTE:   Commenting out the  Denial of service sanity check:
 ###         This is forced above, but in such a way that the incident can be reclassified rather than being classified 'EE'
 ###         The reason is the training data used Quality incidents where DoS can bypass the quality filter, drawing non-DoS low quality incidents
@@ -266,7 +283,7 @@ add_patterns <- function(veris,
   }
   
   # code anything uncoded as everything else
-  veris[[paste0(prefix, ".Everything Else")]] <- !unlist(apply(veris[, grepl(paste0("^", prefix), names(veris))], MARGIN=1, any, na.rm=TRUE))
+  veris[[paste0(prefix, ".Everything Else")]] <- !unlist(apply(veris[, grep(paste0("^", prefix), names(veris)), with = FALSE], MARGIN=1, any, na.rm=TRUE))
   
   return(veris)
 }

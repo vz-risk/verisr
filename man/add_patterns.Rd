@@ -15,7 +15,7 @@ add_patterns(
 )
 }
 \arguments{
-\item{veris}{A verisr dataframe}
+\item{veris}{A verisr data.table}
 
 \item{centroids}{A matrix of of skmeans centroids with one row per centroid. If null, (the default), the 2021 DBIR pattern centroids will be used.}
 
@@ -30,7 +30,7 @@ add_patterns(
 \item{veris_update_f}{A function to apply to centoids and veris to handle updates to veris after the clusters are defined.  It must take a veris object and a centroid and return a list of a veris object and centroid.  Because veris adds, removes, and changes enumerations each year, this function modifies the data and centroids, (currently based on veris 1.3.5) to be compatible with the current version of VERIS.}
 }
 \value{
-a verisr object with the columns added
+a data.table object with the columns added
 }
 \description{
 This function works by scoring the incidents according to the skmeans clusters.  Not, it can be rather slow on large data sets.
