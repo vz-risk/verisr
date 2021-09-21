@@ -730,6 +730,7 @@ getenumCI2022 <- function(veris,
         mcmc$enum <- plyr::mapvalues(mcmc$enum, gsub("[ \t\r\n]", ".", as.character(unique(subchunk_to_ci$enum))), as.character(unique(subchunk_to_ci$enum)), warn_missing=FALSE) # it would be nice to not have to import plyr, but oh well. - GDB 191123
         mcmc$enum <- plyr::mapvalues(mcmc$enum, gsub("[ ]", "", as.character(unique(subchunk_to_ci$enum))), as.character(unique(subchunk_to_ci$enum)), warn_missing=FALSE) 
         mcmc$enum <- plyr::mapvalues(mcmc$enum, gsub("[*]", "MU", as.character(unique(subchunk_to_ci$enum))), as.character(unique(subchunk_to_ci$enum)), warn_missing=FALSE) 
+        mcmc$enum <- plyr::mapvalues(mcmc$enum, gsub("[\\-]", "M", as.character(unique(subchunk_to_ci$enum))), as.character(unique(subchunk_to_ci$enum)), warn_missing=FALSE) 
       }
       
       # separate the values back into their respective subchunks
