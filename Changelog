@@ -1,3 +1,6 @@
+version 2.3.2.022:
+* Updated json2veris to produce a consistent dataframe in the plus.event_chain column. This allow veris to be easily exported as parquet.
+
 version 2.3.2.021:
 * fixed bug in getenumCI2022
 

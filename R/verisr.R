@@ -64,6 +64,14 @@
 #'                     schema="~/veris/verisc-local.json")
 #' }
 json2veris <- function(dir=c(), files=c(), schema=NULL, progressbar=F) {
+  # Define this here as we'll use it later
+  one_na_row_event_chain <- data.frame(
+    action = NA_character_,
+    actor = NA_character_,
+    asset = NA_character_,
+    attribute = NA_character_,
+    summary = NA_character_
+  )
 
   savetime <- proc.time()
   # if no schema, try to load it from github
@@ -177,7 +185,24 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, progressbar=F) {
     }
     # fill in the event_chain list. - GDB 180118
     if ("plus.event_chain" %in% names(nfield)) {
-      event_chain[[i]] <- nfield[['plus.event_chain']]
+      if (ncol(nfield[['plus.event_chain']]) < 5) {
+        #tmp_event_chain <- dplyr::bind_cols(nfield[['plus.event_chain']], 
+        tmp_event_chain <- cbind(nfield[['plus.event_chain']], 
+                                            one_na_row_event_chain[setdiff(names(one_na_row_event_chain), 
+                                                                           names(nfield[['plus.event_chain']]))])
+        event_chain[[i]] <- tmp_event_chain[, c('action', 'actor', 'asset', 'attribute', 'summary')]
+      } else {
+        event_chain[[i]] <- nfield[['plus.event_chain']][, c('action', 'actor', 'asset', 'attribute', 'summary')]
+        
+      }
+    } else {
+      event_chain[[i]] <- data.frame(
+        action = character(),
+        actor = character(),
+        asset = character(),
+        attribute = character(),
+        summary = character()
+      )
     }
     if (!is.null(pb)) setTxtProgressBar(pb, i)
   }
@@ -279,7 +304,7 @@ post.proc <- function(veris) {
   print(which(fails))
   if (any(fails)) {
     for (i in which(fails)) {
-      set(veris, i=which(is.na(veris[[i]])), j=i, value=FALSE)
+      data.table::set(veris, i=which(is.na(veris[[i]])), j=i, value=FALSE)
     }
   } 
   fails <- sapply(colnames(veris), function(x) is.logical(veris[[x]]) & any(is.na(veris[[x]]))) # takes 6gb ram but gc() cleans up

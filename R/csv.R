@@ -10,7 +10,7 @@ veris2csv <- function(dir=".") {
   jfiles <- unlist(sapply(dir, list.files, pattern = "json$", full.names=T))
   # now read them all
   veris <- lapply(jfiles, function(jfile) {
-    fromJSON(file=jfile, method='C')
+    rjson::fromJSON(file=jfile, method='C')
   })  
   vnames <- getvnames(veris)
   # setup venum with field names to represent as categories

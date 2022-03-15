@@ -234,7 +234,7 @@ test_veris_proportion <- function(chunk, Ea, prop, direction, ci.level=0.05, rep
       return(p_value$p_value >= conf.level)
     }
     
-    error("This code location should not be reached.")
+    stop("This code location should not be reached.")
     return(NULL)
   }
   
@@ -309,7 +309,7 @@ test_veris_consistency <- function(chunk, Ea, Eb, ci.level=0.05, reps=1000, quie
   #        pull(p_value)
   
   p_value <- infer::get_p_value(null_distribution, 0, direction="two_sided") %>%
-    pull(p_value)
+    dplyr::pull(p_value)
   
   if (!quietly) {
     message(paste0("The hypothesis that the values ", Ea, " and ", Eb, " are equal is NOT ", p_value <= ci.level, 
@@ -429,6 +429,6 @@ test_veris_time_stability <- function(chunk, Ea, stable=NULL, direction=NULL, qu
     return(res)
   }
   
-  error("This code location should not be reached.")
+  stop("This code location should not be reached.")
   return(NULL)
 }

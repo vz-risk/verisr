@@ -1,8 +1,8 @@
 Package: verisr
 Type: Package
 Title: Tools for working with VERIS objects
-Version: 2.3.2.021
-Date: 2021-06-01
+Version: 2.3.2.022
+Date: 2022-03-14
 Authors@R: c( person("Gabriel", "Bassett", email = "gabriel.bassett@verizon.com",
     role = c("cre", "aut")))
 Description: VERISR loads up VERIS JSON objects and offers convenience 
@@ -31,10 +31,11 @@ Suggests:
     infer (>= 0.5.1),
     jqr (>= 1.1.0),
     moderndive (>= 0.4.0),
+    readr (>= 1.1.0),
     scales (>= 1.0.0),
     skmeans (>= 0.2),
     testthat,
     tidybayes (>= 1.1.0),
     tidyr (>= 1.0.2),
     plyr (>= 1.8.4)
-RoxygenNote: 7.1.1
+RoxygenNote: 7.1.2

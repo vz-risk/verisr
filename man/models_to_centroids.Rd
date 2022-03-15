@@ -6,9 +6,6 @@
 \usage{
 models_to_centroids()
 }
-\arguments{
-\item{breach}{A skmeans model of breach centroids. (Should)}
-}
 \value{
 A matrix of of skmeans centroids with one row per centroid
 }
