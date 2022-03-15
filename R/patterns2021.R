@@ -1,20 +1,65 @@
-#' Helper function to retrieve prototypes from skmeans models for add_patterns
+#' Groom data for patterns, no changes
 #' 
-#' @return A matrix of of skmeans centroids with one row per centroid
-models_to_centroids <- function() {
-  #data("models", envir=environment())
-  load(system.file("data", "2021_pattern_models.rda", package="verisr"), verbose=FALSE)
-  
-  non_breach_proto <- models$non_breach$prototypes
-  breach_proto <- models$breach$prototypes
-  rownames(non_breach_proto) <- paste0("cluster.I", rownames(non_breach_proto))
-  rownames(breach_proto) <- paste0("cluster.B", rownames(breach_proto))
-  
-  rm(models)
-  
-  return(rbind(non_breach_proto, breach_proto))
+#' Because VERIS changes, columns come and go.  This makes the clustering
+#' function unhappy.  This function can be used if no no changes to the 
+#' centroids are needed but the function is desired
+#' 
+#' @param veris veris object to cluster
+#' @param centroids skmeans cluster prototypes
+#' @return veris, centroids
+#' @export
+#' 
+pattern_no_change <- function(veris, centroids) {
+  return(list("veris"=veris, "centroids"=centroids))
 }
 
+#' Groom data for patterns from VERIS 1.3.6 to 1.3.5
+#' 
+#' Because VERIS changes, columns come and go.  This makes the clustering
+#' function unhappy.  We need to make sure the data we're clustering matches
+#' the matrix we're using to cluster (based on veris 1.3.5).
+#' 
+#' @param veris veris object to cluster
+#' @param centroids skmeans cluster prototypes
+#' @return veris, centroids
+#' @export
+pattern_1.3.6_to_1.3.5 <- function(veris, centroids) {
+  ### Because VERIS changes, the columns used to cluster may change.
+  ### We can map renamed enumerations from VERIS to their new name using this mapping
+  veris_name_map <- readr::read_csv("from,to
+    action.hacking.variety.Footprinting,action.hacking.variety.Profile host
+    action.hacking.variety.HTTP Response Splitting,action.hacking.variety.HTTP response splitting
+    action.hacking.variety.Use of backdoor or C2,action.hacking.vector.Backdoor
+    action.social.vector.Website,action.social.vector.Web application
+    action.hacking.vector.Backdoor or C2,action.hacking.vector.Backdoor")
+  ### For columns that are combined during a VERIS update  (i.e. 2 columns in 
+  ###  centroids are now 1 in veris) we will duplicate the column in VERIS under
+  ###  the old name to allow it to be used during clustering.
+  veris_col_dup <- readr::read_csv("from,to
+", n_max=1) # n_max forces to no rows
+  ### It's possible for columns to be removed from VERIS.  Those must be removed
+  ### from the the cluster
+  veris_name_rem <- c("actor.Multiple", "victim.industry2.31_33", "victim.industry2.44_45", "victim.industry2.48_49", 
+                      "action.malware.variety.SQL injection", "action.error.variety.Carelessness", 
+                      "asset.assets.variety.S - web application", "asset.assets.variety.S - File server", 
+                      "asset.assets.variety.M -Documents", "asset.assets.variety.S - Web Application", 
+                      "attribute.confidentiality.data.variety.Persoal")
+  ### New columns added to veris cannot be added without re-clustering.
+  
+  ### Apply the rules to account for VERIS updates
+  ### Handle joined columns
+  if (nrow(veris_col_dup) > 0) {
+    for (i in 1:nrow(veris_col_dup)) {
+      veris[[veris_col_dup[i, ][["to"]]]] <- veris[[veris_col_dup[i, ][["from"]]]]
+    }
+  }
+  ### Update columns
+  colnames(centroids) <- plyr::mapvalues(colnames(centroids), veris_name_map$from, veris_name_map$to)
+  ### Remove obsolete columns
+  centroids <- centroids[, setdiff(colnames(centroids), veris_name_rem)]
+  
+  return(list("veris"=veris, "centroids"=centroids))
+}
 
 #' Groom data for patterns from VERIS 1.3.4 to 1.3.5
 #' 
@@ -57,36 +102,61 @@ pattern_1.3.4_to_1.3.5 <- function(veris, centroids) {
 }
 
 
+#' Currently a reference to verisr::pattern_1.3.6_to_1.3.5()
+#' 
+#' @inheritParams pattern_1.3.6_to_1.3.5
+#' @export
+pattern_current_to_1.3.5 <- function(...) {verisr::pattern_1.3.6_to_1.3.5(...)}
+
+
+#' Helper function to retrieve prototypes from skmeans models for add_patterns
+#' 
+#' @return A matrix of of skmeans centroids with one row per centroid
+models_to_centroids <- function() {
+  #data("models", envir=environment())
+  load(system.file("data", "2021_pattern_models.rda", package="verisr"), verbose=FALSE)
+  
+  non_breach_proto <- models$non_breach$prototypes
+  breach_proto <- models$breach$prototypes
+  rownames(non_breach_proto) <- paste0("cluster.I", rownames(non_breach_proto))
+  rownames(breach_proto) <- paste0("cluster.B", rownames(breach_proto))
+  
+  rm(models)
+  
+  return(rbind(non_breach_proto, breach_proto))
+}
+
+
 #' A function to add patterns to a verisr dataframe
 #' 
 #' This function works by scoring the incidents according to the skmeans clusters.  Not, it can be rather slow on large data sets.
 #'
-#' @param veris  A verisr data.table
+#' @param veris  A verisr data.table or data.frame like veris object
 #' @param centroids  A matrix of of skmeans centroids with one row per centroid. If null, (the default), the 2021 DBIR pattern centroids will be used.
 #' @param prefix  The predicate of the column name to use for the patterns
 #' @param replace  Whether to remove previously existing columns with the same predicate before adding the patterns
 #' @param clusters  If TRUE, will add the clusters to the returned veris object as 'cluster.X' with a value of the cosign distance to the cluster
 #' @param threshold The ratio of the difference of cluster-to-incident distances and the smallest cluster-to-incident distance. Defaults to 1/10th (i.e. the difference must be 1/10th the distance to the incident. This results in two percent of clusters kept in 2020 data)
 #' @param veris_update_f A function to apply to centoids and veris to handle updates to veris after the clusters are defined.  It must take a veris object and a centroid and return a list of a veris object and centroid.  Because veris adds, removes, and changes enumerations each year, this function modifies the data and centroids, (currently based on veris 1.3.5) to be compatible with the current version of VERIS.
-#' @return a data.table object with the columns added
+#' @return veris object with the columns added
 #' @export
-add_patterns <- function(veris, 
+add_patterns <- function(veris,
                          centroids=NULL, 
                          prefix="pattern", 
                          replace=TRUE, 
                          clusters=FALSE, 
                          threshold=0.1,
-                         veris_update_f = NULL) {
-  UseMethod("add_patterns", veris)
+                         veris_update_f = verisr::pattern_current_to_1.3.5) {
+  UseMethod("add_patterns")
 }
   
-add_patterns.data.frame <- function(veris, 
-                         centroids=NULL, 
-                         prefix="pattern", 
-                         replace=TRUE, 
-                         clusters=FALSE, 
-                         threshold=0.1,
-                         veris_update_f = NULL) {
+add_patterns.default <- function(veris,
+                         centroids, #=NULL, 
+                         prefix, #="pattern", 
+                         replace, #=TRUE, 
+                         clusters, #=FALSE, 
+                         threshold, #=0.1,
+                         veris_update_f) { # = verisr::pattern_1.3.6_to_1.3.5) {
   if (is.null(centroids)) {
     centroids <- verisr:::models_to_centroids()
   }
@@ -309,13 +379,13 @@ add_patterns.data.frame <- function(veris,
 }
 
 
-add_patterns.data.table <- function(veris, 
-                                    centroids=NULL, 
-                                    prefix="pattern", 
-                                    replace=TRUE, 
-                                    clusters=FALSE, 
-                                    threshold=0.1,
-                                    veris_update_f = NULL) {
+add_patterns.data.table <- function(veris,
+                                    centroids, #=NULL, 
+                                    prefix, #="pattern", 
+                                    replace, #=TRUE, 
+                                    clusters, #=FALSE, 
+                                    threshold, #=0.1,
+                                    veris_update_f) { # = verisr::pattern_1.3.6_to_1.3.5) {
   if (is.null(centroids)) {
     centroids <- verisr:::models_to_centroids()
   }

@@ -4,7 +4,13 @@
 \alias{json2veris}
 \title{Read in all the VERIS incidents (JSON files) in a given directory.}
 \usage{
-json2veris(dir = c(), files = c(), schema = NULL, progressbar = F)
+json2veris(
+  dir = c(),
+  files = c(),
+  schema = NULL,
+  veris_update_f = NULL,
+  progressbar = F
+)
 }
 \arguments{
 \item{dir}{The directory to list through.  This may be a vector of 
@@ -17,6 +23,11 @@ with 'dir'.  Any duplicates between files found in 'dir' and 'files'
 will be removed.}
 
 \item{schema}{a full veris schema with enumerations included.}
+
+\item{veris_update_f}{Because patterns were clustered on veris 1.3.5, a 
+function may be provided to convert update the clusters for the current
+veris version. Leave 'NULL' to use the function appropriate for the 
+current veris version.}
 
 \item{progressbar}{a logical value to show (or not show) a progress bar}
 }

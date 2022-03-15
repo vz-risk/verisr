@@ -4,10 +4,12 @@
 \alias{post.proc}
 \title{Post process the veris object to add convenience fields.}
 \usage{
-post.proc(veris)
+post.proc(veris, veris_update_f)
 }
 \arguments{
 \item{veris}{the verisr object}
+
+\item{veris_update_f}{the pattern post-processing function}
 }
 \description{
 Given a veris object this will populate several convenience fields

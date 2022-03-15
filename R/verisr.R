@@ -45,6 +45,10 @@
 #' with 'dir'.  Any duplicates between files found in 'dir' and 'files'
 #' will be removed.
 #' @param schema a full veris schema with enumerations included.
+#' @param veris_update_f Because patterns were clustered on veris 1.3.5, a 
+#'    function may be provided to convert update the clusters for the current
+#'    veris version. Leave 'NULL' to use the function appropriate for the 
+#'    current veris version.
 #' @param progressbar a logical value to show (or not show) a progress bar
 #' @keywords json
 #' @import data.table
@@ -63,7 +67,7 @@
 #' veris <- json2veris(dir="~/vcdb", 
 #'                     schema="~/veris/verisc-local.json")
 #' }
-json2veris <- function(dir=c(), files=c(), schema=NULL, progressbar=F) {
+json2veris <- function(dir=c(), files=c(), schema=NULL, veris_update_f=NULL, progressbar=F) {
   # Define this here as we'll use it later
   one_na_row_event_chain <- data.frame(
     action = NA_character_,
@@ -72,6 +76,10 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, progressbar=F) {
     attribute = NA_character_,
     summary = NA_character_
   )
+  
+  if (is.null(veris_update_f)) {
+    veris_update_f <- verisr::pattern_current_to_1.3.5
+  }
 
   savetime <- proc.time()
   # if no schema, try to load it from github
@@ -215,7 +223,7 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, progressbar=F) {
   # WARNING: the below line causes duplicates and overwrites legitimate 'Not Applicable' enumerations (such as plus.attack_difficulty_initial) so removing
   #  Instead, need to standardize NAs in veris.
   # colnames(veris) <- gsub('Not Applicable', 'NA', colnames(veris), ignore.case=TRUE) # this causes more problems than it solves. 17-01-17 GDB
-  veris <- post.proc(veris)
+  veris <- post.proc(veris, veris_update_f)
   gc(verbose=FALSE)
   #veris <- as.data.frame(veris) # convert data.table to data.frame because data tables are evil. - 17-01-17
   data.table::setDF(veris)
@@ -236,7 +244,8 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, progressbar=F) {
 #' Change in 1.1.3: now adds dummar vars for each pattern as "pattern.*"
 #' 
 #' @param veris the verisr object
-post.proc <- function(veris) {
+#' @param veris_update_f the pattern post-processing function
+post.proc <- function(veris, veris_update_f) {
   # orgsize
   small <- c("victim.employee_count.1 to 10", "victim.employee_count.11 to 100", 
              "victim.employee_count.101 to 1000", "victim.employee_count.Small")
@@ -294,7 +303,7 @@ post.proc <- function(veris) {
                                 replace = TRUE, 
                                 clusters = FALSE, 
                                 threshold = 0.1,
-                                veris_update_f = NULL) # NOTE: this will need to change for verisr past 1.3.5
+                                veris_update_f = veris_update_f)
   gc(verbose=FALSE)
   
   print("veris dimensions")
