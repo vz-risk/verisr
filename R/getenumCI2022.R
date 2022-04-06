@@ -593,6 +593,15 @@ getenumCI2022 <- function(veris,
               attr(bootstrap_distribution, 'generate') <- TRUE
               attr(bootstrap_distribution, 'type') <- "bootstrap"
               attr(bootstrap_distribution, 'stat') <- "prop"
+            } else if (all(enum_sub_samples$result)) { # if all results are true, infer will error due to a bug so hard coding it.
+              bootstrap_distribution <- data.frame(replicate=1:500, stat=as.double(1))
+              attr(bootstrap_distribution, 'response') <- "result"
+              attr(bootstrap_distribution, 'success') <- "TRUE"
+              attr(bootstrap_distribution, 'response_type') <- "factor"
+              attr(bootstrap_distribution, 'theory_type') <- "One sample prop z"
+              attr(bootstrap_distribution, 'generate') <- TRUE
+              attr(bootstrap_distribution, 'type') <- "bootstrap"
+              attr(bootstrap_distribution, 'stat') <- "prop"
             } else {
               # specify that we variables to use and what their levels mean
               bootstrap_distribution <- infer::specify(enum_sub_samples, response = result, success="TRUE")

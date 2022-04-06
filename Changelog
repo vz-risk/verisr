@@ -1,4 +1,7 @@
 version 2.3.2.022:
+* fixed getenumCI2022 to avoid a bug in infer
+
+version 2.3.2.022:
 * Updated json2veris to produce a consistent dataframe in the plus.event_chain column. This allow veris to be easily exported as parquet.
 
 version 2.3.2.021:
