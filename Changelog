@@ -1,3 +1,6 @@
+version 2.3.2.024:
+* Added test_veris_ratio() fact checking function.
+
 version 2.3.2.022:
 * fixed getenumCI2022 to avoid a bug in infer
 

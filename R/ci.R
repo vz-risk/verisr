@@ -432,3 +432,130 @@ test_veris_time_stability <- function(chunk, Ea, stable=NULL, direction=NULL, qu
   stop("This code location should not be reached.")
   return(NULL)
 }
+
+
+
+#' Test the ratio of Ea to Eb
+#' 
+#' Often we want to create quotes of the form "X is N times more/less likely than y in Z"
+#' This function provides a test for such quotes.  It checks that the ratio is within the
+#' ci.level credible interval and that the credible interval does not include 1
+#' (indicating that we lack the ci.level confidence in the direciton of the ratio)
+#' 
+#' @param chunk getenumCI() output
+#' @param Ea Enumeration A.  e.g. "action.Error"
+#' @param Eb Enumeration B.  e.g. "action.Misuse"
+#' @param ratio The ratio of Ea to Eb to test as a number. Must be greater than 1.
+#' @param direction the direction to test ("greater" or "less")
+#' @param ci.level the confidence level to test against
+#' @param reps number of simulations to conduct
+#' @param quietly do not produce textual output
+#' @param visualize produce visual output
+#' @return a logical TRUE/FALSE to the hypothesis
+#' @export
+test_veris_ratio <- function(chunk, Ea, Eb, ratio, direction, ci.level=0.05, reps=1000, quietly=FALSE, visualize=FALSE) {
+  # https://data.library.virginia.edu/comparing-proportions-with-relative-risk-and-odds-ratios/
+  
+  if (!Ea %in% chunk$enum) {
+    stop("'Ea' and 'Eb' must both be in the 'enum' column of 'chunk'.")
+  }
+  if (length(setdiff(c('x', 'n'), names(chunk))) > 0) {
+    stop("Both 'x' and 'n' must be columns in 'chunk'.")
+  }
+  
+  if (ratio <= 1) {stop("Ratio must be greater than 1.  Did you mean to set direction='less'?")}
+  
+  if (direction == "more") {
+    # pass
+  } else if (direction == "greater") {
+    direction <- "more"
+  } else if (direction == "less") {
+    ratio <- 1/ratio
+  } else {
+    stop("When ratio is not null, only 'more', 'greater' and 'less' are accepted as directions.")
+  }
+  
+  conf.level <- 1 - ci.level # this is useful for our directional portion
+  enum_order <- c(Ea, Eb)
+  
+  chunk <- do.call(rbind, lapply(c(Ea,Eb), function(enum) {
+    data.frame(enum = rep(enum, chunk[chunk$enum == enum, ][['n']]), result = c(rep(TRUE, chunk[chunk$enum == enum, ][['x']]), rep(FALSE, chunk[chunk$enum == enum, ][['n']] - chunk[chunk$enum == enum, ][['x']])))
+  })) 
+  
+  obs_prop_ratio <- infer::specify(chunk, formula = result ~ enum, success = "TRUE")
+  obs_prop_ratio <- infer::calculate(obs_prop_ratio, stat = "ratio of props", order = enum_order)
+  obs_prop_ratio <- log10(as.numeric(obs_prop_ratio))
+  
+  # specify that we variables to use and what their levels mean
+  bootstrap_distribution <- infer::specify(chunk, formula = result ~ enum, success = "TRUE")
+  # sample with replacement (bootstrap) to create our bootstrap distributions
+  bootstrap_distribution <- infer::generate(bootstrap_distribution, reps = reps, type = "bootstrap")
+  # calculate a proportion per bootsrap distribution rep
+  bootstrap_distribution <- infer::calculate(bootstrap_distribution, stat = "ratio of props", order = enum_order)
+  # because we're doing ratios we can get divide by zero's.  We'll just remove those.
+  bootstrap_distribution <- bootstrap_distribution[!is.infinite(bootstrap_distribution[['stat']]), ]
+  # convert to log ratio to handle less than 1's
+  bootstrap_distribution[['stat']] <- log10(bootstrap_distribution[['stat']])
+  
+  #p_value <- infer::get_p_value(bootstrap_distribution, obs_stat = prop, direction = "both")
+  
+  percentile_ci <- infer::get_confidence_interval(bootstrap_distribution, level=conf.level, type="percentile")
+  
+  
+  ## Visualize the results
+  if (visualize) {
+    gg <- infer::visualize(bootstrap_distribution, bins=20)
+    gg <- gg + infer::shade_confidence_interval(percentile_ci, fill=NULL) 
+    gg <- gg + infer::shade_pvalue(log10(ratio), NULL)
+    gg <- gg + scale_x_continuous(labels= ~ case_when(
+      .x == 0 ~ "Even Ratio",
+      .x > 0 ~ paste0(scales::comma(10^.x, accuracy=1), "x"),
+      .x < 0 ~ paste0("-", scales::comma(10^abs(.x), accuracy=1), "x")
+    ))
+    grid::grid.draw(gg)
+  }
+  
+  ratio_in_range <- log10(ratio) >= percentile_ci[[1]] & log10(ratio) <= percentile_ci[[2]]
+  zero_in_range <- (0 < percentile_ci[[1]] | percentile_ci[[2]] < 0)
+  
+  non_log_percentile_ci <- c(percentile_ci[[1]], percentile_ci[[2]])
+  non_log_percentile_ci <- case_when(
+    non_log_percentile_ci == 0 ~ "Even Ratio",
+    non_log_percentile_ci > 0 ~ paste0(scales::comma(10^non_log_percentile_ci, accuracy=0.01), "x more"),
+    non_log_percentile_ci < 0 ~ paste0(scales::comma(10^abs(non_log_percentile_ci), accuracy=0.01), "x less")
+  )
+  non_log_obs_prop_ratio <- case_when(
+    obs_prop_ratio == 0 ~ "Even Ratio",
+    obs_prop_ratio > 0 ~ paste0(scales::comma(10^obs_prop_ratio, accuracy=0.01), "x more"),
+    obs_prop_ratio < 0 ~ paste0(scales::comma(10^abs(obs_prop_ratio), accuracy=0.01), "x less")
+  )
+  
+  
+  if (!quietly) {
+    message(paste0(
+      "The hypothesis is ", 
+      ratio_in_range, 
+      " because the ratio of ", 
+      scales::comma(ifelse(direction == "less", 1/ratio, ratio), accuracy=0.01),
+      "x ",
+      direction,
+      " common is", 
+      ifelse(ratio_in_range, " ", " not "),  
+      "in the ", 
+      scales::percent(1-ci.level, accuracy=1), 
+      " range between ",  
+      non_log_percentile_ci[1], 
+      " to ",
+      non_log_percentile_ci[2], 
+      " common (with a median of ", 
+      non_log_obs_prop_ratio, 
+      " common) ", 
+      ifelse(ratio_in_range == zero_in_range, "and ", " but "), 
+      "the range", 
+      ifelse(zero_in_range, " does not ", " does "), 
+      "contain the even ratio (-1 or 1)."
+    ))
+  }
+  
+  return(ratio_in_range & zero_in_range)
+}
