@@ -1,3 +1,7 @@
+version 2.3.2.025:
+* started getenumCI2023
+* Initial edit is to let it run on arrow datasets.
+
 version 2.3.2.024:
 * Added test_veris_ratio() fact checking function.
 
