@@ -24,6 +24,7 @@ Imports:
     boot (>= 1.3-18),
     lifecycle (>= 0.1.0)
 Suggests:
+    arrow (>= 9.0.0),
     binom (>= 1.1-1),
     brms (>= 2.10.0),
     dplyr (>= 0.8.3),
