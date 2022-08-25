@@ -90,7 +90,7 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, veris_update_f=NULL, pro
     lschema <- rjson::fromJSON(file=schema)
   }  
   # create listing of files
-  jfiles <- data.frame(jfile = unique(c(files, unlist(sapply(dir, list.files, pattern = "zip$|json$", full.names=T))))) #files and dirs
+  jfiles <- data.frame(jfile = unique(c(files, unlist(sapply(dir, list.files, pattern = "zip$|json$", full.names=T, ignore.case = TRUE))))) #files and dirs
   if (nrow(jfiles) == 0) {stop("No json or zip files were found in the directories or files provided. Please double check your input.")}
   jfiles[['ftype']] <- "file"
   
@@ -101,7 +101,7 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, veris_update_f=NULL, pro
   for (zfile in zfiles$jfile) { # for each zfile we need to parse it's content and 
     # get the internal files we need to operate over
     content <- unzip(zfile, list=TRUE)
-    content <- as.character(content[grepl("[.]json$", content$Name), "Name"])
+    content <- as.character(content[grepl("[.]json$", content$Name, ignore.case = TRUE), "Name"])
     # We'll parse each file to a string
     zipped_strings <- unlist(lapply(content, function(filename) {
       con <- unz(zfile, filename, open="") # open set to "" so it isn't opened initially so we can open it and set blocking=TRUE
