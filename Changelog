@@ -1,3 +1,6 @@
+version 2.3.2.027:
+* fix to edge case in getenumCI2023
+
 version 2.3.2.026:
 * Updated json2veris to not be case sensitive for file extensions
 

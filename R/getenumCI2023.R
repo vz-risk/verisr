@@ -126,8 +126,8 @@ getenumCI2023 <- function(veris,
     if (!quietly) { warning("ci.method set to mcmc, but 'brms' and 'tidybayes' not both installed.  updating ci.method to 'bootstrap'") }
   }
   
-  if (!is.null(top) && top < 1) {
-    if (!quietly) { warning(paste0("Top must be 1 or greater, but is (", top, "). Setting top to NULL.")) }
+  if (!is.null(top) && (top < 1 || !is.vector(top))) {
+    if (!quietly) { warning(paste0("Top must be 1 or greater and not a dataframe, but is (", top, "). Setting top to NULL.")) }
     top <- NULL
   }
   
@@ -391,7 +391,11 @@ getenumCI2023 <- function(veris,
         enum_counts <- enum_counts[!grepl("^(.+[.]|)(O|o)ther$", names(enum_counts))]
         if (!is.null(unk)) {
           if (unk == FALSE) {
-            enum_counts <- enum_counts[!grepl("^(.+[.]|)(U|u)nknown$", names(enum_counts))]
+            if (short.names) {
+              enum_counts <- enum_counts[!grepl("^(.+[.]|)(U|[A-Za-z]{1,3} - [U|u])nknown$", names(enum_counts))]
+            } else {
+              enum_counts <- enum_counts[!grepl("^(.+[.]|)(U|u)nknown$", names(enum_counts))]
+            }
           }
         }
         if (!is.null(na)) {
@@ -409,7 +413,11 @@ getenumCI2023 <- function(veris,
         }
         if (!is.null(unk)) {
           if (unk == FALSE) {
-            top_enums <- c(top_enums, grep("^(.+[.]|)(U|u)nknown$", enum_enums, value=TRUE))
+            if (short.names) {
+              top_enums <- c(top_enums, grep("^(.+[.]|)(U|[A-Za-z]{1,3} - [U|u])nknown$", enum_enums, value=TRUE))
+            } else {
+              top_enums <- c(top_enums, grep("^(.+[.]|)(U|u)nknown$", enum_enums, value=TRUE))
+            }
           }
         }
         if (!is.null(na)) {

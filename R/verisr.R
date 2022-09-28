@@ -154,7 +154,7 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, veris_update_f=NULL, pro
   event_chain <- vector("list", numfil) # event_chain will be the only list column, so create teh column separately to add back in. - GDB 180118
   for (i in 1:nrow(jfiles)) {
   #furrr::future_map(1:nrow(jfiles), function(i) { # Tried parallelization, however since the `veris` object is not shared writable across futures, it doesn't get written correctly. - GDB 201123
-      #message(i) # DEBUG
+      #message(jfiles[i, "jfile"]) # DEBUG
     # we have to use rjson here because other parsers fail
     if (as.character(jfiles[i, "ftype"] == "file")) {
       json <- rjson::fromJSON(file=as.character(jfiles[i, "jfile"]), method='C') 
