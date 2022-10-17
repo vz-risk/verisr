@@ -131,9 +131,12 @@ getenumCI2023 <- function(veris,
     top <- NULL
   }
   
+  # Sanity check that there is input data. (This ends up being important for automated analysis.)
+  if (nrow(veris) <= 0) {stop("No rows in input data.")}
+  
   # Sanity check since previous getenumCI's didn't require it.
   if (!"plus.master_id" %in% names(veris)) {stop("'plus.master_id' must be in the veris object passed to getenumCI().")}
-
+  
   # we support arrow datasets and arrow queries so that you don't have to load the entire dataframe to do analysis. - gdb 220610
   if (is.null(by)) {
     col_names_regex <- paste0("^plus.master_id|", enum, "|", enum, "[.][A-Z0-9][^.]$")

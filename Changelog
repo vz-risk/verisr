@@ -1,3 +1,6 @@
+version 2.3.2.028:
+* added an error to getenumCI2023 if input data has zero rows.  The error that happens otherwise is obscure and hard to interpret.
+
 version 2.3.2.027:
 * fix to edge case in getenumCI2023
 
