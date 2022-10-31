@@ -1,3 +1,13 @@
+version 2.3.2.029:
+* Handle errors found by @CarrotPercepti1 (https://twitter.com/CarrotPercepti1/status/1586738912403374082)
+* If the schema in use doesn't include plus.event_chain, don't include it. (was also causing DT warning)
+* bypassed issue in rjson reading schema as a file by just passing it the URL if no schema is passed.
+* Made the error for when something is in the incident but not the schema more clear.
+* Clarified the error associated with clustering with schemas newer than 1.3.5.
+* fixed an error in getenumCI2023() that did not occur on my install but did on a fresh install related to no ci.method argument
+* added plyr, dplyr, and skmeans to 'imports' because json2veris and getenumCI are the two main functions and the three are required for json2veris.
+* removed RCurl since the rjson fix removed the need for it.
+
 version 2.3.2.028:
 * added an error to getenumCI2023 if input data has zero rows.  The error that happens otherwise is obscure and hard to interpret.
 

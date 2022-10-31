@@ -74,10 +74,10 @@
 #' getenumCI(vcdb, "action")
 #' getenumCI(vcdb, "asset.variety")
 #' getenumCI(vcdb, "asset.assets.variety")
-#' getenumCI(vcdb, "asset.assets.variety", ci.method="wilson")
+#' getenumCI(vcdb, "asset.assets.variety", ci.method="bayes")
 #' getenumCI(vcdb, "asset.cloud", na.rm=FALSE)
 #' getenumCI(vcdb, "action.social.variety.Phishing")
-#' getenumCI(vcdb, "actor.*.motive", ci.method="wilson", na.rm=FALSE)
+#' getenumCI(vcdb, "actor.*.motive", ci.method="bayes", na.rm=FALSE)
 #' rm(vcdb)
 getenumCI2023 <- function(veris, 
                       enum, 
@@ -117,11 +117,11 @@ getenumCI2023 <- function(veris,
     ci.method <- ci.method[1]
   }
   
-  if (!is.null(ci.method) && !ci.method %in% c("mcmc", "bootstrap", "bayes")) {
+  if (length(ci.method) > 0 && !ci.method %in% c("mcmc", "bootstrap", "bayes")) {
     stop(paste0("ci.method ", ci.method, " not one of c('mcmc', 'bootstrap', 'bayes')."))
   }
   
-  if (ci.method == "mcmc" && length(intersect(c("brms", "tidybayes"), rownames(installed.packages()))) < 2) {
+  if (length(ci.method) > 0 && ci.method == "mcmc" && length(intersect(c("brms", "tidybayes"), rownames(installed.packages()))) < 2) {
     ci.method <- "bootstrap"
     if (!quietly) { warning("ci.method set to mcmc, but 'brms' and 'tidybayes' not both installed.  updating ci.method to 'bootstrap'") }
   }
@@ -549,7 +549,7 @@ getenumCI2023 <- function(veris,
     }
     
     # apply the confidence interval.  Apply to NA's and unk separately depending on if selected. (If you try and apply CI's cart blanc to the NA/Unknowns it can error out on binding the columns)
-    if (!is.null(ci.method) && ci.method == "bayes") {
+    if (length(ci.method) > 0 && ci.method == "bayes") {
       if (nrow(enum_subchunk) > 0) {
         # replacing the one-liner with this because binom.bayes has a bug that errors if the ends (0 or n) are included in x and number of rows > 3
         enum_subchunk[['method']] <- "bayes"
@@ -599,7 +599,7 @@ getenumCI2023 <- function(veris,
           na_subchunk <- data.frame()
         }
       }
-    } else if (!is.null(ci.method) && ci.method == "bootstrap") {
+    } else if (length(ci.method) > 0 && ci.method == "bootstrap") {
       if (nrow(enum_subchunk) > 0) {
         enum_subchunk[['method']] <- "bootstrap"
         enum_subchunk[['lower']] <- NA
@@ -715,7 +715,7 @@ getenumCI2023 <- function(veris,
           na_subchunk <- data.frame()
         }
       }
-    } else if (!is.null(ci.method) && ci.method == "mcmc") {
+    } else if (length(ci.method) > 0 && ci.method == "mcmc") {
       # An MCMC bayes approach to the confidence interval
       
       # First step is to join all the sections that need to be modeled.  That way we don't have to compile multiple models
@@ -823,7 +823,7 @@ getenumCI2023 <- function(veris,
     # We do this here after the  subchunk join in case enum_subchunk didn't have any rows
     # Also, this will not be in the '1' position after sorting.  But since there is  a model per 'by', it'd be a PITA to place it.
     # people will just need to find it in the output per by. (It's the only non-null param.)
-    if (ci.params && !is.null(ci.method) && ci.method == "mcmc") {subchunk[1, 'params'][[1]] <- list(m)} 
+    if (ci.params && length(ci.method) > 0 && ci.method == "mcmc") {subchunk[1, 'params'][[1]] <- list(m)} 
     
     subchunk # return
   })

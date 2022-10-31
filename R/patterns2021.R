@@ -434,8 +434,9 @@ add_patterns.data.table <- function(veris,
                    paste(setdiff(colnames(centroids), names(veris)), collapse = ", "),
                    "). Removing them from clusters so that clustering can proceed, ",
                    "but you should check your data and if these are significant ",
-                   "columns, you shoudl apply a veris update function with ",
-                   "veris_update_f to properly handle them."))
+                   "columns, you should apply a veris update function with ",
+                   "veris_update_f to properly handle them.  ",
+                   "This error is likely due to using a schema newer than 1.3.5."))
     centroids <- centroids[ , intersect(names(veris), colnames(centroids))]
   }
   

@@ -52,7 +52,6 @@
 #' @param progressbar a logical value to show (or not show) a progress bar
 #' @keywords json
 #' @import data.table
-#' @import RCurl
 #' @export
 #' @examples
 #' \dontrun{
@@ -84,11 +83,14 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, veris_update_f=NULL, pro
   savetime <- proc.time()
   # if no schema, try to load it from github
   if (missing(schema)) {
-    x <- getURL("https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json")
-    lschema <- rjson::fromJSON(json_str=x)
-  } else {
-    lschema <- rjson::fromJSON(file=schema)
-  }  
+    ### This apparently can fail as fromJSON doesn't read the full json string (https://twitter.com/CarrotPercepti1/status/1587138409671397376)
+    ### Additionally, this may be the only use of RCurl, removing an unnecessary dependency. - GDB 221031
+    #x <- RCurl::getURL("https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json")
+    #lschema <- rjson::fromJSON(json_str=x)
+    schema <- "https://raw.githubusercontent.com/vz-risk/veris/master/verisc-merged.json"
+  }
+  lschema <- rjson::fromJSON(file=schema)
+ 
   # create listing of files
   jfiles <- data.frame(jfile = unique(c(files, unlist(sapply(dir, list.files, pattern = "zip$|json$", full.names=T, ignore.case = TRUE))))) #files and dirs
   if (nrow(jfiles) == 0) {stop("No json or zip files were found in the directories or files provided. Please double check your input.")}
@@ -134,6 +136,7 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, veris_update_f=NULL, pro
   # need to pull these before we loop, used over and over in loop
   a4 <- geta4names() # just returns a (named) character vector of the 4A's and their next level values.  i.e. actor.External
   vtype <- parseProps(lschema) # recursively parse the schema. returns a named character vector. names=column, value=class. (no enumerations)
+  event_chain_in_schema <- any(grepl("event_chain", names(vtype)))
   # get a named vector of field and types
   vft <- getverisdf(lschema, a4) # we now have all the columns we need
   # now create a data table with the specific blank types
@@ -151,7 +154,7 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, veris_update_f=NULL, pro
   pb <- NULL
   if (progressbar) pb <- txtProgressBar(min = 0, max = nrow(jfiles), style = 3)
   # in each file, pull out the values and fill in the data table
-  event_chain <- vector("list", numfil) # event_chain will be the only list column, so create teh column separately to add back in. - GDB 180118
+  event_chain <- vector("list", numfil) # event_chain will be the only list column, so create the column separately to add back in. - GDB 180118
   for (i in 1:nrow(jfiles)) {
   #furrr::future_map(1:nrow(jfiles), function(i) { # Tried parallelization, however since the `veris` object is not shared writable across futures, it doesn't get written correctly. - GDB 201123
       #message(jfiles[i, "jfile"]) # DEBUG
@@ -169,8 +172,8 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, veris_update_f=NULL, pro
     if (length(nfield)==0) warning(paste("empty json file parsed from", jfiles[i, "jfile"]))
     nomatch <- !(names(nfield) %in% colnames(veris))
     if (any(nomatch)) {
-      warning(paste0("Column[s]: \n", paste0("  \"", names(nfield)[nomatch], "\"", collpase=", "), 
-                     "\nNot found in schema, source file:", jfiles[i, "jfile"]))
+      warning(paste0("Column[s]: ", paste0("  \"", names(nfield)[nomatch], "\"", collpase=", "), 
+                     " was/were found in the incident, but not in the schema, source file:", jfiles[i, "jfile"]))
     }
     for(x in names(nfield)) {
       if (x != "plus.event_chain") { # we will handle plus.event_chain as a 1-off below. - GDB 180118
@@ -193,6 +196,7 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, veris_update_f=NULL, pro
     }
     # fill in the event_chain list. - GDB 180118
     if ("plus.event_chain" %in% names(nfield)) {
+      if (!event_chain_in_schema) {warning(paste0("Column plus.event_chain was found in the incident, but not in the schema, source file: ", jfiles[i, "jfile"]))}
       if (ncol(nfield[['plus.event_chain']]) < 5) {
         #tmp_event_chain <- dplyr::bind_cols(nfield[['plus.event_chain']], 
         tmp_event_chain <- cbind(nfield[['plus.event_chain']], 
@@ -216,9 +220,17 @@ json2veris <- function(dir=c(), files=c(), schema=NULL, veris_update_f=NULL, pro
   }
 #  }) # pairs with furrr::map( above.
   if (!is.null(pb)) close(pb)
+  
   # veris <- veris[, !grepl("event_chain", names(veris))]
-  veris[, (grep("event_chain[.]", names(veris), value=TRUE)) := NULL]
-  set(veris, j='plus.event_chain', value=event_chain) # store the event_chain list into the data.table as a column - GDB 180118
+  event_chain_cols <- grep("event_chain[.]", names(veris), value=TRUE)
+  if (length(event_chain_cols) > 0) { veris[, (event_chain_cols) := NULL] } # avoid DT warning by only removing the column if it's in the data. -- GDB 221031
+  ### line below: only store the event chain if it's in the schema or the data.
+  if (event_chain_in_schema || any(purrr::map_lgl(event_chain, ~ nrow(.x) > 0))) { set(veris, j='plus.event_chain', value=event_chain) } # store the event_chain list into the data.table as a column - GDB 180118
+  ### Error covered per-file above
+  #if (any(purrr::map_lgl(event_chain, ~ nrow(.x) > 0)) && !event_chain_in_schema) {
+  #  warning("event_chain found in data but not in schema.")
+  #}
+    
   # Not Applicable is replaced with NA for consistency
   # WARNING: the below line causes duplicates and overwrites legitimate 'Not Applicable' enumerations (such as plus.attack_difficulty_initial) so removing
   #  Instead, need to standardize NAs in veris.
