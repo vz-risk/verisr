@@ -17,6 +17,16 @@
 #' @export
 foldmatrix <- function(veris, cols=NULL, rows=NULL, min=1, clean=T) {
   lifecycle::deprecate_soft("2.3.1.006", "foldmatrix()")
+  rlang::inform(
+    message=paste0("If you are following the examples in Data-Driven Security, ",
+                   "please consider using the data from the book page ", 
+                   "(https://wiley.com/go/datadrivensecurity/) and the verisr branch ",
+                   "from the authors (https://github.com/jayjacobs/verisr).  This will ",
+                   "ensure updates to both VCDB data and verisr do not impact the ",
+                   "examples in the book."),
+    .frequency="once",
+    .frequency_id="dd5f1673-222b-4803-b885-1e62db8f7c64"
+  )
   
   all.logical <- getlogical(veris)
   if(is.null(cols)) {

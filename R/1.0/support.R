@@ -39,6 +39,8 @@ indname2label <- function(industry) {
 #' @param unknown logical; include unknown in the enumeration
 #' @export
 getlevel <- function(enum, unknown=T) {
+  lifecycle::deprecate_soft("2.3.1.006", "getlevel()")
+  
   switch(enum,
          actor=c("external", "internal", "partner", "unknown"),
          action=c("malware", "hacking", "social", "misuse", "physical", "error", "environmental", "unknown"),

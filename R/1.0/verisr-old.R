@@ -82,6 +82,8 @@ vcol.old <- function(veris, field) {
 #' }
 getenum.old <- function(veris, enum, primary=NULL, secondary=NULL, 
                     filter=NULL, add.n=F, add.freq=F, fillzero=T) {
+  lifecycle::deprecate_soft("2.3.1.006", "getenum.old()", "getenumCI()")
+  
   if(!missing(primary)) {
     return(getenumby(veris=veris, enum=enum, primary=primary, 
                      secondary=secondary, filter=filter, add.n=add.n,
@@ -143,6 +145,8 @@ getenum.old <- function(veris, enum, primary=NULL, secondary=NULL,
 #' external <- getenum(veris, "actor.external.motive")
 #' }
 getfilter.old1 <- function(veris, and=NULL, or=NULL, or.not=NULL, and.not=NULL) {
+  lifecycle::deprecate_soft("2.3.1.006", "getfilter.old1()")
+  
   # this will return a matrix, one row for each
   # element in the list passed in, with a match
   # of the value in that list
@@ -209,6 +213,8 @@ getfilter.old1 <- function(veris, and=NULL, or=NULL, or.not=NULL, and.not=NULL) 
 #' external <- getenum(veris, "actor.external.motive")
 #' }
 vfilter.old <- function(veris, and=NULL, or=NULL) {
+  lifecycle::deprecate_soft("2.3.1.006", "vfilter.old()")
+  
   #veris %>% getfilter("action.hacking.variety"="SQLi")
   #and=c("action.hacking.variety.SQLi", "asset.assets.variety.S - Mail")
   # what if I allow | and &
@@ -238,6 +244,8 @@ vfilter.old <- function(veris, and=NULL, or=NULL) {
 #' external <- getenum(veris, "actor.external.motive")
 #' }
 getenumby.old <- function(veris, enum, primary, secondary=NULL, filter=NULL, add.n=F, add.freq=F, fillzero=T) {
+  lifecycle::deprecate_soft("2.3.1.006", "getenumby.old()")
+  
   if(length(by) > 2) {
     warning("by variable has more than 2, only taking first 2")
   }
@@ -391,6 +399,8 @@ getenumby.old <- function(veris, enum, primary, secondary=NULL, filter=NULL, add
 #' @param enum the field to count
 #' @export
 getenumlist.old <- function(veris, enum) {
+  lifecycle::deprecate_soft("2.3.1.006", "getenumlist.old()")
+  
   # if the veris object has null names and yet length
   # it is an array, and we simply want to step into
   # and through it.  The top level veris object
@@ -531,6 +541,8 @@ getvnamelong.old <- function(veris, curname = NULL) {
 #' @method summary verisr
 #' @export
 summary.verisr.old <- function(object, ...) {
+  lifecycle::deprecate_soft("2.3.1.006", "summary.verisr.old()")
+  
   veris <- object
   cat(paste(nrow(veris), "incidents in this object.\n"))
   actor <- getenum(veris, "actor", add.freq=T)
@@ -559,6 +571,8 @@ summary.verisr.old <- function(object, ...) {
 #' @method plot verisr
 #' @export
 plot.verisr.old <- function(x, y, ...) {
+  lifecycle::deprecate_soft("2.3.1.006", "plot.verisr.old()")
+  
 #  x <- object
   actor <- getenum(x, "actor", add.freq=T)
   action <- getenum(x, "action", add.freq=T)

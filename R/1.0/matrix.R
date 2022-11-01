@@ -6,6 +6,8 @@
 #' @param veris a verisr object
 #' @export
 veris2csv <- function(veris) {
+  lifecycle::deprecate_soft("2.3.1.006", "veris2csv()")
+  
   vnames <- getvnames(veris)
   # setup venum with field names to represent as categories
   # the names must be passable to getenumlist
@@ -96,6 +98,18 @@ sortvmatrix <- function(x) {
 #' @param unknown logical, whether to include Unknown/Other fields
 #' @export
 veris2matrix <- function(veris, industry=2, unknown=F) {
+  lifecycle::deprecate_soft("2.3.1.006", "veris2matrix()")
+  rlang::inform(
+    message=paste0("If you are following the examples in Data-Driven Security, ",
+                   "please consider using the data from the book page ", 
+                   "(https://wiley.com/go/datadrivensecurity/) and the verisr branch ",
+                   "from the authors (https://github.com/jayjacobs/verisr).  This will ",
+                   "ensure updates to both VCDB data and verisr do not impact the ",
+                   "examples in the book."),
+    .frequency="once",
+    .frequency_id="dd5f1673-222b-4803-b885-1e62db8f7c64"
+  )
+  
   vnames <- getvnames(veris)
   enumfields <- c("actor", "action")
   venum <- vnames[grep(paste('^',enumfields, sep='', collapse='|'), vnames)]
@@ -151,6 +165,18 @@ veris2matrix <- function(veris, industry=2, unknown=F) {
 #' @param clean if TRUE, this will look for anything that will mess up a PCA or MDS function and remove it.
 #' @export
 foldmatrix <- function(pca, feature, min=1, clean=FALSE) {
+  lifecycle::deprecate_soft("2.3.1.006", "foldmatrix()")
+  rlang::inform(
+    message=paste0("If you are following the examples in Data-Driven Security, ",
+                   "please consider using the data from the book page ", 
+                   "(https://wiley.com/go/datadrivensecurity/) and the verisr branch ",
+                   "from the authors (https://github.com/jayjacobs/verisr).  This will ",
+                   "ensure updates to both VCDB data and verisr do not impact the ",
+                   "examples in the book."),
+    .frequency="once",
+    .frequency_id="dd5f1673-222b-4803-b885-1e62db8f7c64"
+  )
+  
   folded <- do.call(rbind, lapply(feature, function(x) {
     # pull slice of rows where that incident has feature x
     incidents <- which(pca[ ,x]==1)
@@ -183,6 +209,8 @@ foldmatrix <- function(pca, feature, min=1, clean=FALSE) {
 #' @param filter an optional filter to apply
 #' @export
 pcamatrix <- function(veris, filter=NULL) {
+  lifecycle::deprecate_soft("2.3.1.006", "pca2matrix()")
+  
   if (!is.null(filter)) {
     if (is.logical(filter)) {
       veris <- veris[filter]
@@ -216,6 +244,8 @@ pcamatrix <- function(veris, filter=NULL) {
 #' @param filter an optional filter to apply
 #' @export
 countMatrix <- function(veris, label, filter=NULL) {
+  lifecycle::deprecate_soft("2.3.1.006", "countmatrix()")
+  
   if (!is.null(filter)) {
     if (is.logical(filter)) {
       veris <- veris[filter]

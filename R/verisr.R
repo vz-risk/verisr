@@ -67,6 +67,19 @@
 #'                     schema="~/veris/verisc-local.json")
 #' }
 json2veris <- function(dir=c(), files=c(), schema=NULL, veris_update_f=NULL, progressbar=F) {
+  if (is.null(schema)) { # in the book,t hey don't specify a schema but DBIR authors always specify. This is just to decrease the number of alerts. - GDB 221101
+    rlang::inform(
+      message=paste0("If you are following the examples in Data-Driven Security, ",
+                     "please consider using the data from the book page ", 
+                     "(https://wiley.com/go/datadrivensecurity/) and the verisr branch ",
+                     "from the authors (https://github.com/jayjacobs/verisr).  This will ",
+                     "ensure updates to both VCDB data and verisr do not impact the ",
+                     "examples in the book."),
+      .frequency="once",
+      .frequency_id="dd5f1673-222b-4803-b885-1e62db8f7c64"
+    )
+  }
+  
   # Define this here as we'll use it later
   one_na_row_event_chain <- data.frame(
     action = NA_character_,
@@ -928,6 +941,17 @@ getenumby <- function(...) {
 #' @describeIn getenumCI getenum A wrapper for getenumCI().  Maintained for backwards compatibility.
 #' @export
 getenum <- function(...) {
+  rlang::inform(
+    message=paste0("If you are following the examples in Data-Driven Security, ",
+                   "please consider using the data from the book page ", 
+                   "(https://wiley.com/go/datadrivensecurity/) and the verisr branch ",
+                   "from the authors (https://github.com/jayjacobs/verisr).  This will ",
+                   "ensure updates to both VCDB data and verisr do not impact the ",
+                   "examples in the book."),
+    .frequency="once",
+    .frequency_id="dd5f1673-222b-4803-b885-1e62db8f7c64"
+  )
+  
   getenumCI(...)
 }
 
