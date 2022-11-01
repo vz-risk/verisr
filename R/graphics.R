@@ -10,6 +10,9 @@
 #' @import ggplot2
 #' @export
 simplebar <- function(enumdf, title=NULL, solidfill="steelblue", ...) {
+  
+  lifecycle::deprecate_soft("2.3.1.006", "simplebar()")
+  
   if ('data.table' %in% class(enumdf)) {
     enumdf <- as.data.frame(enumdf)
   }
@@ -50,6 +53,8 @@ simplebar <- function(enumdf, title=NULL, solidfill="steelblue", ...) {
 #' @import ggplot2
 #' @export
 plota4 <- function(veris, title="A4 Grid", freq=T) {
+  lifecycle::deprecate_soft("2.3.1.006", "simplebar()")
+  
   # intended to be pdf on letter size
   a4 <- getenum(veris, c("action", "asset.variety", "actor", "attribute"))
   a4$enum <- factor(a4$enum, levels=rev(levels(a4$enum)))

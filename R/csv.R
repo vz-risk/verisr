@@ -6,6 +6,8 @@
 #' @param dir one or more directories with json files.
 #' @export
 veris2csv <- function(dir=".") {
+  lifecycle::deprecate_soft("2.3.1.0006", "veris2csv()")
+  
   # create listing of files
   jfiles <- unlist(sapply(dir, list.files, pattern = "json$", full.names=T))
   # now read them all

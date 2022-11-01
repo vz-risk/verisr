@@ -16,6 +16,8 @@
 #' and remove it, this includes empty rows and columns as well as columns with zero variance.
 #' @export
 foldmatrix <- function(veris, cols=NULL, rows=NULL, min=1, clean=T) {
+  lifecycle::deprecate_soft("2.3.1.006", "foldmatrix()")
+  
   all.logical <- getlogical(veris)
   if(is.null(cols)) {
     cols <- all.logical
@@ -76,6 +78,8 @@ foldmatrix <- function(veris, cols=NULL, rows=NULL, min=1, clean=T) {
 #' # can summarize the results
 #' table(pat)
 getpattern <- function(veris) {
+  lifecycle::deprecate_soft("2.3.2.020", "getpattern()", details="getpattern() will produce the 2014 patterns.  Use add_patterns() for 2021 patterns.")
+  
   skimmer <- veris[['action.physical.variety.Skimmer']] |
     (veris[['action.physical.variety.Tampering']] & veris[['attribute.confidentiality.data.variety.Payment']])
   espionage <- (veris[['actor.external.motive.Espionage']] | 

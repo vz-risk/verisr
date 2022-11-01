@@ -1,3 +1,7 @@
+version 2.3.2.030:
+* Added lifecycle warnings to old verisr functions which may no longer work.
+* NOTE: several functions in the Data Driven Security book are now marked depreciated.  I will try and go through the book and update the functions it uses to work consistenly with current verisr.
+
 version 2.3.2.029:
 * Handle errors found by @CarrotPercepti1 (https://twitter.com/CarrotPercepti1/status/1586738912403374082)
 * If the schema in use doesn't include plus.event_chain, don't include it. (was also causing DT warning)

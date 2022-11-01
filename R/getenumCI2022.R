@@ -95,6 +95,8 @@ getenumCI2022 <- function(veris,
                       force = FALSE,
                       quietly = FALSE,
                       ...) {
+  lifecycle::deprecate_warn("version 2.3.2.025", "verisr::getenumCI2022()", "verisr::getenumCI2023()")
+  
   # Below this value for 'n', apply ci best practices from https://github.com/vz-risk/dbir-private/issues/43 unless force = TRUE
   ci_n <- 30 # chosen semi-arbitrarily, but it is roughly where frequentist normal approximations break down.
   n_floor <- 5 # chosen semi-arbitrarily.  return empty dataframe

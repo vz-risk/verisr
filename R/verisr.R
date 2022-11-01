@@ -717,6 +717,8 @@ getnth <- function(nm, which=2) {
 #' external <- getenum(veris, "actor.external.motive")
 #' }
 getenum.single <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
+  lifecycle::deprecate_soft("2.3.1.006", "getenum.single()", "getenumCI()")
+  
   if (is.null(filter)) {
     filter <- rep(T, nrow(veris))
   } else if (length(filter) != nrow(veris)) {
@@ -822,6 +824,8 @@ getenum.single <- function(veris, enum, filter=NULL, add.n=T, add.freq=T) {
 #' }
 getenum2 <- function(veris, enum, primary=NULL, secondary=NULL, filter=NULL, 
                       add.n=T, add.freq=T, fillzero=T, exclusive=F) {
+  lifecycle::deprecate_soft("2.3.1.006", "getenum2()")
+  
     if (missing(filter)) {
     filter <- rep(T, nrow(veris))
   } else if (length(filter) != nrow(veris)) {
@@ -935,6 +939,9 @@ getenum <- function(...) {
 #' @method summary verisr
 #' @export
 summary.verisr <- function(object, ...) {
+  
+  lifecycle::deprecate_soft("2.3.1.006", "verisr::summary.verisr()")
+  
   veris <- object
   cat(paste(nrow(veris), "incidents in this object.\n"))
   actor <- getenum(veris, "actor", add.freq=T)
@@ -970,6 +977,9 @@ summary.verisr <- function(object, ...) {
 #' @method plot verisr
 #' @export
 plot.verisr <- function(x, y, ...) {
+  
+  lifecycle::deprecate_soft("2.3.1.006", "plot.verisr()")
+  
   # @importFrom ggplot2 ggplotGrob
   veris <- x
   actor <- getenum(veris, "actor", add.freq=T)
@@ -1002,6 +1012,9 @@ plot.verisr <- function(x, y, ...) {
 #' @param veris the verisr object
 #' @export
 getlogical <- function(veris) {
+
+  lifecycle::deprecate_soft("2.3.1.006", "getlogical()")
+  
   our.cols <- sapply(veris, mode)
   names(our.cols[grep('^logical$', our.cols)])
 }

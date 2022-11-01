@@ -1,9 +1,11 @@
 #' The main method for summarizes veris enumerations from verisr objects
+#' Points to the annually updated version of getenumCI(). Previous versions
+#' maintained for reproducibility.
 #' 
-#' @inheritDotParams getenumCI2019
+#' @inheritDotParams getenumCI2023
 #' @export
 getenumCI <- function(...) {
-  getenumCI2019(...)
+  getenumCI2023(...)
 }
 
 #' Summarizes veris enumerations from verisr objects
@@ -64,6 +66,7 @@ getenumSRC <- function(veris,
                        round.freq=5, 
                        na = NULL, 
                        ...) {
+  lifecycle::deprecate_soft("2.3.1.0006", "getenumSRC()")
   
   # even though the parameter is 'na.rm', we still use 'na' internally.
   if (!is.null(na.rm)) {
