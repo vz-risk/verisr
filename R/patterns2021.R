@@ -13,6 +13,55 @@ pattern_no_change <- function(veris, centroids) {
   return(list("veris"=veris, "centroids"=centroids))
 }
 
+#' Groom data for patterns from VERIS 1.3.7 to 1.3.5
+#' TODO: eventually add the ability to chain the updates, instead of copying code
+#' Because VERIS changes, columns come and go.  This makes the clustering
+#' function unhappy.  We need to make sure the data we're clustering matches
+#' the matrix we're using to cluster (based on veris 1.3.5).
+#' 
+#' @param veris veris object to cluster
+#' @param centroids skmeans cluster prototypes
+#' @return veris, centroids
+#' @export
+pattern_1.3.7_to_1.3.5 <- function(veris, centroids) {
+  ### Because VERIS changes, the columns used to cluster may change.
+  ### We can map renamed enumerations from VERIS to their new name using this mapping
+  veris_name_map <- readr::read_csv("from,to
+    action.hacking.variety.Footprinting,action.hacking.variety.Profile host
+    action.hacking.variety.HTTP Response Splitting,action.hacking.variety.HTTP response splitting
+    action.hacking.variety.Use of backdoor or C2,action.hacking.vector.Backdoor
+    action.social.vector.Website,action.social.vector.Web application
+    action.hacking.vector.Backdoor or C2,action.hacking.vector.Backdoor")
+  ### For columns that are combined during a VERIS update  (i.e. 2 columns in 
+  ###  centroids are now 1 in veris) we will duplicate the column in VERIS under
+  ###  the old name to allow it to be used during clustering.
+  veris_col_dup <- readr::read_csv("from,to
+", n_max=1) # n_max forces to no rows
+  ### It's possible for columns to be removed from VERIS.  Those must be removed
+  ### from the the cluster
+  veris_name_rem <- c("actor.Multiple", "victim.industry2.31_33", "victim.industry2.44_45", "victim.industry2.48_49", 
+                      "action.malware.variety.SQL injection", "action.error.variety.Carelessness", 
+                      "asset.assets.variety.S - web application", "asset.assets.variety.S - File server", 
+                      "asset.assets.variety.M -Documents", "asset.assets.variety.S - Web Application", 
+                      "attribute.confidentiality.data.variety.Persoal","action.error.variety.Omisssion")
+  ### New columns added to veris cannot be added without re-clustering.
+  ### Apply the rules to account for VERIS updates
+  ### Handle joined columns
+  if (nrow(veris_col_dup) > 0) {
+    for (i in 1:nrow(veris_col_dup)) {
+      veris[[veris_col_dup[i, ][["to"]]]] <- veris[[veris_col_dup[i, ][["from"]]]]
+    }
+  }
+  ### Update columns
+  colnames(centroids) <- plyr::mapvalues(colnames(centroids), veris_name_map$from, veris_name_map$to)
+  ### Remove obsolete columns
+  centroids <- centroids[, setdiff(colnames(centroids), veris_name_rem)]
+  
+  return(list("veris"=veris, "centroids"=centroids))
+}
+
+
+
 #' Groom data for patterns from VERIS 1.3.6 to 1.3.5
 #' 
 #' Because VERIS changes, columns come and go.  This makes the clustering
@@ -102,11 +151,11 @@ pattern_1.3.4_to_1.3.5 <- function(veris, centroids) {
 }
 
 
-#' Currently a reference to verisr::pattern_1.3.6_to_1.3.5()
+#' Currently a reference to verisr::pattern_1.3.7_to_1.3.5()
 #' 
-#' @inheritParams pattern_1.3.6_to_1.3.5
+#' @inheritParams pattern_1.3.7_to_1.3.5
 #' @export
-pattern_current_to_1.3.5 <- function(...) {verisr::pattern_1.3.6_to_1.3.5(...)}
+pattern_current_to_1.3.5 <- function(...) {pattern_1.3.7_to_1.3.5(...)}
 
 
 #' Helper function to retrieve prototypes from skmeans models for add_patterns

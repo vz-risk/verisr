@@ -10,14 +10,12 @@ Icon
 testing*.R
 ignore/*
 
-<<<<<<< HEAD
 .dropbox
 .Dropbox
 
 Icon
 
 =======
->>>>>>> 48c5aa08dcc5b421a341daefa6ea949090ecf315
 # Thumbnails
 ._*
 
@@ -25,7 +23,7 @@ Icon
 .Spotlight-V100
 .Trashes
 rcode/.Rhistory
-<<<<<<< HEAD
+
 # History files
 .Rhistory
 
@@ -42,6 +40,18 @@ Desktop.ini
 $RECYCLE.BIN/
 =======
 .Rproj.user
->>>>>>> b0e3616219735a95f64240a81c62881f41b8989a
+
 
 *.ipynb
+.idea/vcs.xml
+.idea/inspectionProfiles/profiles_settings.xml
+.idea/verisr.iml
+.idea/vcs.xml
+.idea/modules.xml
+.idea/misc.xml
+.idea/inspectionProfiles/profiles_settings.xml
+.idea/verisr.iml
+.idea/vcs.xml
+.idea/modules.xml
+.idea/misc.xml
+.idea/inspectionProfiles/profiles_settings.xml
